@@ -1,9 +1,11 @@
 import { Car, MapPinned, X } from "lucide-react";
 
-export function ConfirmModal({ lot, onCancel, onConfirm }) {
+export function ConfirmModal({ lot, mode = "simulation", onCancel, onConfirm }) {
   if (!lot) {
     return null;
   }
+
+  const isRealMode = mode === "real";
 
   return (
     <div
@@ -23,10 +25,12 @@ export function ConfirmModal({ lot, onCancel, onConfirm }) {
                 className="text-lg font-semibold text-white"
                 id="parking-confirm-title"
               >
-                Konfirmasi Slot Kosong
+                {isRealMode ? "Detail Slot Kosong" : "Konfirmasi Slot Kosong"}
               </h2>
               <p className="text-sm text-white/58">
-                Slot ini tersedia dan bisa langsung dipakai.
+                {isRealMode
+                  ? "Slot ini kosong berdasarkan data Supabase."
+                  : "Slot ini tersedia dan bisa langsung dipakai."}
               </p>
             </div>
           </div>
@@ -76,15 +80,25 @@ export function ConfirmModal({ lot, onCancel, onConfirm }) {
             onClick={onCancel}
             type="button"
           >
-            Batal
+            {isRealMode ? "Tutup" : "Batal"}
           </button>
-          <button
-            className="rounded-xl bg-[#ff6845] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#ff7d5e]"
-            onClick={onConfirm}
-            type="button"
-          >
-            Ya, Parkir
-          </button>
+          {isRealMode ? (
+            <button
+              className="rounded-xl bg-[#ff6845] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#ff7d5e]"
+              onClick={onConfirm}
+              type="button"
+            >
+              Tandai Terisi
+            </button>
+          ) : (
+            <button
+              className="rounded-xl bg-[#ff6845] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#ff7d5e]"
+              onClick={onConfirm}
+              type="button"
+            >
+              Ya, Parkir
+            </button>
+          )}
         </div>
       </div>
     </div>

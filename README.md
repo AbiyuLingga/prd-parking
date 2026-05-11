@@ -135,44 +135,52 @@ Default nama tabel yang dipakai:
 parking_slots
 ```
 
-Default kolom yang direkomendasikan:
+Schema tabel yang dipakai project hardware:
 
 | Kolom | Tipe | Contoh | Keterangan |
 | --- | --- | --- | --- |
-| `slot_id` | text | `L1-A1` | ID slot parkir |
-| `floor` | integer | `1` | Lantai |
-| `row` | text | `A` | Baris slot |
-| `column` | integer | `1` | Nomor kolom |
-| `is_occupied` | boolean | `true` | Status terisi/kosong |
-| `updated_at` | timestamptz | `now()` | Waktu update terakhir |
+| `parking_id` | text | `L1-A1` atau `P-001` | ID data parkir. Jika bukan format layout, frontend membuat ID dari `level_id`, `zone_id`, dan `slot_number`. |
+| `area_id` | text | `A` | Area parkir. Dipakai sebagai fallback baris jika `zone_id` kosong. |
+| `level_id` | integer | `0` | Level/lantai dari hardware. `0` dibaca sebagai Lantai 1, `1` sebagai Lantai 2. |
+| `zone_id` | text | `A` | Zona/baris slot. Untuk layout saat ini gunakan `A` atau `B`. |
+| `slot_number` | integer | `1` | Nomor slot dalam zona. |
+| `is_filled` | boolean | `true` | Status slot terisi/kosong. |
 
 Contoh SQL tabel:
 
 ```sql
 create table if not exists parking_slots (
-  slot_id text primary key,
-  floor integer not null,
-  row text not null,
-  column integer not null,
-  is_occupied boolean not null default false,
-  updated_at timestamptz not null default now()
+  parking_id text primary key,
+  area_id text not null,
+  level_id integer not null,
+  zone_id text not null,
+  slot_number integer not null,
+  is_filled boolean not null default false
 );
 ```
 
 Contoh seed 24 slot:
 
 ```sql
-insert into parking_slots (slot_id, floor, row, column, is_occupied)
+insert into parking_slots (
+  parking_id,
+  area_id,
+  level_id,
+  zone_id,
+  slot_number,
+  is_filled
+)
 select
-  'L' || floor || '-' || row_label || column_number as slot_id,
-  floor,
-  row_label,
+  'L' || (level_id + 1) || '-' || zone_id || slot_number as parking_id,
+  'MAIN' as area_id,
+  level_id,
+  zone_id,
   column_number,
   false
-from generate_series(1, 2) as floor
-cross join unnest(array['A', 'B']) as row_label
+from generate_series(0, 1) as level_id
+cross join unnest(array['A', 'B']) as zone_id
 cross join generate_series(1, 6) as column_number
-on conflict (slot_id) do nothing;
+on conflict (parking_id) do nothing;
 ```
 
 Contoh update dari worker:
@@ -180,14 +188,13 @@ Contoh update dari worker:
 ```sql
 update parking_slots
 set
-  is_occupied = true,
-  updated_at = now()
-where slot_id = 'L1-A1';
+  is_filled = true
+where parking_id = 'L1-A1';
 ```
 
 ## Supabase RLS
 
-Karena frontend membaca Supabase langsung memakai anon key, aktifkan RLS dan beri izin read-only untuk dashboard.
+Karena frontend memakai Supabase langsung dari browser, aktifkan RLS. Minimal policy untuk membaca data:
 
 ```sql
 alter table parking_slots enable row level security;
@@ -199,7 +206,18 @@ to anon
 using (true);
 ```
 
-Jangan berikan policy `insert`, `update`, atau `delete` ke role `anon` jika web dashboard hanya boleh membaca data. Worker sebaiknya memakai credential server-side sendiri, bukan key yang dipakai frontend.
+Jika ingin tombol web langsung mengubah status slot menjadi terisi, tambahkan policy update untuk kolom `is_filled`:
+
+```sql
+create policy "allow public update parking slot status"
+on parking_slots
+for update
+to anon
+using (true)
+with check (true);
+```
+
+Policy update di atas cocok untuk demo. Untuk sistem produksi, lebih aman jika update tetap lewat worker/backend yang memegang credential server-side.
 
 ## Supabase Realtime
 
@@ -224,24 +242,42 @@ src/services/supabaseParking.js
 Kolom utama yang dibaca:
 
 ```txt
-slot_id
-floor
-row
-column
-is_occupied
-updated_at
+parking_id
+area_id
+level_id
+zone_id
+slot_number
+is_filled
 ```
 
 Adapter juga menerima beberapa variasi nama kolom agar mudah disesuaikan dengan output worker:
 
 | Data | Nama kolom yang diterima |
 | --- | --- |
-| ID slot | `slot_id`, `slotId`, `id`, `lot_id`, `lotId`, `parking_slot` |
-| Lantai | `floor`, `lantai` |
-| Baris | `row`, `baris` |
+| ID slot | `slot_id`, `slotId`, `parking_id`, `parkingId`, `id`, `lot_id`, `lotId`, `parking_slot` |
+| Lantai | `level_id`, `levelId`, `floor`, `lantai` |
+| Baris | `zone_id`, `zoneId`, `area_id`, `areaId`, `row`, `baris` |
 | Kolom | `column`, `col`, `slot_number`, `slotNumber` |
-| Status | `is_occupied`, `isOccupied`, `occupied`, `status`, `value` |
+| Status | `is_filled`, `isFilled`, `is_occupied`, `isOccupied`, `occupied`, `status`, `value` |
 | Waktu update | `updated_at`, `updatedAt`, `created_at`, `createdAt` |
+
+Untuk schema hardware, frontend membuat ID layout seperti ini:
+
+```txt
+L{level_id + 1}-{zone_id}{slot_number}
+```
+
+Jika data Supabase memiliki `slot_number = 0`, frontend otomatis menganggap nomor slot memakai format zero-based `0-5`, lalu mengubahnya menjadi layout web `1-6`.
+
+Contoh:
+
+```txt
+level_id = 0, zone_id = "A", slot_number = 1
+-> L1-A1
+
+level_id = 0, zone_id = "A", slot_number = 0
+-> L1-A1
+```
 
 Nilai status yang dianggap terisi:
 
@@ -261,9 +297,9 @@ true, 1, "true", "occupied", "terisi", "full"
 ### Mode Real
 
 - Data dibaca dari Supabase.
-- UI bersifat read-only terhadap status slot.
-- Klik slot hanya memilih/menyorot slot.
-- Popup parkir lokal tidak muncul karena status sebenarnya dikendalikan ESP32 dan worker.
+- Klik slot kosong membuka modal detail.
+- Tombol `Tandai Terisi` mengubah `is_filled` menjadi `true` di Supabase.
+- Setelah update, dashboard mengambil ulang data Supabase.
 - Tombol refresh tersedia untuk mengambil ulang data Supabase.
 
 ## Deploy ke Vercel
@@ -298,8 +334,9 @@ dist
 - Jangan commit `.env`.
 - Jangan taruh `service_role key` Supabase di frontend.
 - Frontend hanya boleh memakai `anon key`.
-- Atur RLS Supabase agar anon hanya bisa `select`.
-- Worker yang menulis data ke Supabase harus berjalan di server dan memakai credential terpisah.
+- Jika web hanya menjadi dashboard, atur RLS anon hanya bisa `select`.
+- Jika web boleh update langsung, batasi policy update sesuai kebutuhan demo.
+- Untuk produksi, worker yang menulis data ke Supabase sebaiknya berjalan di server dan memakai credential terpisah.
 
 ## Troubleshooting
 

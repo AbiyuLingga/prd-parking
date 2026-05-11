@@ -76,7 +76,7 @@ export function ParkingMap({ onRequestPark }) {
   const handleSlotClick = useCallback((lot) => {
     selectLot(lot.id);
 
-    if (lot.isOccupied || parkedCarId || !canManuallyPark) {
+    if (lot.isOccupied || (parkedCarId && canManuallyPark)) {
       return;
     }
 

@@ -58,7 +58,7 @@ function ParkingDashboard() {
       return;
     }
 
-    parkCar(pendingLot.id);
+    parkCar(pendingLot);
     setPendingLot(null);
   }
 
@@ -82,6 +82,7 @@ function ParkingDashboard() {
 
       <ConfirmModal
         lot={pendingLot}
+        mode={dataMode}
         onCancel={() => setPendingLot(null)}
         onConfirm={handleConfirmParking}
       />

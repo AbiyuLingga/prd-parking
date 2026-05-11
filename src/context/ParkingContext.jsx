@@ -11,6 +11,7 @@ import {
   fetchRealParkingLots,
   isSupabaseConfigured,
   subscribeToParkingChanges,
+  updateRealParkingSlot,
 } from "../services/supabaseParking";
 import { getRecommendations } from "../utils/algorithm";
 
@@ -201,9 +202,31 @@ export function ParkingProvider({ children }) {
     [state.parkingLots, state.parkedCarId],
   );
 
-  const parkCar = useCallback((lotId) => {
-    dispatch({ type: "PARK_CAR", payload: lotId });
-  }, []);
+  const parkCar = useCallback(async (lot) => {
+    if (state.dataMode === "real") {
+      dispatch({
+        type: "SET_CONNECTION_STATUS",
+        payload: { status: "connecting" },
+      });
+
+      try {
+        await updateRealParkingSlot(lot, true);
+        await refreshRealData();
+      } catch (error) {
+        dispatch({
+          type: "SET_CONNECTION_STATUS",
+          payload: {
+            status: "offline",
+            error: error.message ?? "Gagal update Supabase.",
+          },
+        });
+      }
+
+      return;
+    }
+
+    dispatch({ type: "PARK_CAR", payload: lot.id ?? lot });
+  }, [refreshRealData, state.dataMode]);
 
   const leaveParking = useCallback(() => {
     dispatch({ type: "LEAVE_PARKING" });
