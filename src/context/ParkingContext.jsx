@@ -2,15 +2,25 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
 } from "react";
 import { generateParkingLots } from "../data/parkingData";
+import {
+  fetchRealParkingLots,
+  isSupabaseConfigured,
+  subscribeToParkingChanges,
+} from "../services/supabaseParking";
 import { getRecommendations } from "../utils/algorithm";
 
 const ParkingContext = createContext(null);
 
 const initialState = {
+  dataMode: "simulation",
+  connectionStatus: "simulation",
+  dataError: null,
+  lastUpdatedAt: null,
   parkingLots: generateParkingLots(),
   parkedCarId: null,
   viewMode: "map",
@@ -20,7 +30,40 @@ const initialState = {
 
 function parkingReducer(state, action) {
   switch (action.type) {
+    case "SET_DATA_MODE":
+      return {
+        ...state,
+        dataMode: action.payload,
+        connectionStatus: action.payload === "real" ? "connecting" : "simulation",
+        dataError: null,
+        parkedCarId: null,
+        selectedLotId: null,
+        viewMode: "map",
+        parkingLots:
+          action.payload === "simulation" ? generateParkingLots() : state.parkingLots,
+      };
+
+    case "SET_CONNECTION_STATUS":
+      return {
+        ...state,
+        connectionStatus: action.payload.status,
+        dataError: action.payload.error ?? null,
+      };
+
+    case "SET_REAL_LOTS":
+      return {
+        ...state,
+        parkingLots: action.payload,
+        connectionStatus: "live",
+        dataError: null,
+        lastUpdatedAt: new Date().toISOString(),
+      };
+
     case "PARK_CAR":
+      if (state.dataMode === "real") {
+        return state;
+      }
+
       return {
         ...state,
         parkedCarId: action.payload,
@@ -32,6 +75,10 @@ function parkingReducer(state, action) {
       };
 
     case "LEAVE_PARKING":
+      if (state.dataMode === "real") {
+        return state;
+      }
+
       return {
         ...state,
         viewMode: "map",
@@ -70,6 +117,62 @@ function parkingReducer(state, action) {
 
 export function ParkingProvider({ children }) {
   const [state, dispatch] = useReducer(parkingReducer, initialState);
+
+  const refreshRealData = useCallback(async () => {
+    if (!isSupabaseConfigured()) {
+      dispatch({
+        type: "SET_CONNECTION_STATUS",
+        payload: {
+          status: "offline",
+          error: "Isi VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY dulu.",
+        },
+      });
+      return;
+    }
+
+    dispatch({
+      type: "SET_CONNECTION_STATUS",
+      payload: { status: "connecting" },
+    });
+
+    try {
+      const lots = await fetchRealParkingLots();
+      dispatch({ type: "SET_REAL_LOTS", payload: lots });
+    } catch (error) {
+      dispatch({
+        type: "SET_CONNECTION_STATUS",
+        payload: {
+          status: "offline",
+          error: error.message ?? "Gagal membaca Supabase.",
+        },
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (state.dataMode !== "real") {
+      return undefined;
+    }
+
+    refreshRealData();
+
+    const unsubscribe = subscribeToParkingChanges(
+      refreshRealData,
+      (error) => {
+        dispatch({
+          type: "SET_CONNECTION_STATUS",
+          payload: {
+            status: "offline",
+            error: error.message,
+          },
+        });
+      },
+    );
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [refreshRealData, state.dataMode]);
 
   const recommendations = useMemo(
     () => (state.parkedCarId ? [] : getRecommendations(state.parkingLots)),
@@ -118,18 +221,25 @@ export function ParkingProvider({ children }) {
     dispatch({ type: "SELECT_LOT", payload: lotId });
   }, []);
 
+  const setDataMode = useCallback((mode) => {
+    dispatch({ type: "SET_DATA_MODE", payload: mode });
+  }, []);
+
   const value = useMemo(
     () => ({
       ...state,
+      canManuallyPark: state.dataMode === "simulation",
       recommendations,
       stats,
       selectedLot,
       parkedLot,
       parkCar,
       leaveParking,
+      refreshRealData,
       setViewMode,
       setFloor,
       selectLot,
+      setDataMode,
     }),
     [
       state,
@@ -139,9 +249,11 @@ export function ParkingProvider({ children }) {
       parkedLot,
       parkCar,
       leaveParking,
+      refreshRealData,
       setViewMode,
       setFloor,
       selectLot,
+      setDataMode,
     ],
   );
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bell,
   Home,
@@ -46,8 +46,12 @@ function TopNavigation() {
 }
 
 function ParkingDashboard() {
-  const { parkCar } = useParking();
+  const { dataMode, parkCar } = useParking();
   const [pendingLot, setPendingLot] = useState(null);
+
+  useEffect(() => {
+    setPendingLot(null);
+  }, [dataMode]);
 
   function handleConfirmParking() {
     if (!pendingLot) {

@@ -2,8 +2,9 @@ import {
   ArrowRight,
   Car,
   CheckCircle2,
-  MapPinned,
+  Database,
   Navigation,
+  RefreshCw,
   TimerReset,
 } from "lucide-react";
 import { useParking } from "../context/ParkingContext";
@@ -31,6 +32,91 @@ function SegmentedControl({ label, value, options, onChange }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function DataModeControl({
+  connectionStatus,
+  dataError,
+  dataMode,
+  lastUpdatedAt,
+  onRefresh,
+  onSelectMode,
+}) {
+  const statusLabel = {
+    simulation: "Simulasi lokal",
+    connecting: "Menghubungkan",
+    live: "Supabase live",
+    offline: "Offline",
+  }[connectionStatus];
+
+  return (
+    <section className="rounded-[18px] border border-white/12 bg-black/14 p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Database size={16} />
+          Mode Data
+        </div>
+        {dataMode === "real" && (
+          <button
+            aria-label="Refresh Supabase"
+            className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/8 text-white/70 transition hover:bg-white/12"
+            onClick={onRefresh}
+            type="button"
+          >
+            <RefreshCw size={14} />
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 rounded-lg border border-white/10 bg-slate-950/50 p-1">
+        {[
+          { label: "Simulasi", value: "simulation" },
+          { label: "Real", value: "real" },
+        ].map((option) => (
+          <button
+            className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+              dataMode === option.value
+                ? "bg-[#ff6845] text-white"
+                : "text-slate-300 hover:bg-white/8 hover:text-white"
+            }`}
+            key={option.value}
+            onClick={() => onSelectMode(option.value)}
+            type="button"
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 flex items-start justify-between gap-3 text-xs">
+        <span className="text-white/55">Status</span>
+        <span
+          className={`text-right ${
+            connectionStatus === "offline" ? "text-red-100" : "text-emerald-200"
+          }`}
+        >
+          {statusLabel}
+        </span>
+      </div>
+      {lastUpdatedAt && dataMode === "real" && (
+        <div className="mt-2 flex justify-between gap-3 text-xs">
+          <span className="text-white/55">Update</span>
+          <span className="font-data text-white/75">
+            {new Date(lastUpdatedAt).toLocaleTimeString("id-ID", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })}
+          </span>
+        </div>
+      )}
+      {dataError && (
+        <div className="mt-3 rounded-lg border border-red-200/20 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+          {dataError}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -72,11 +158,17 @@ function RecommendationCard({ lot, rank, onSelect }) {
 
 export function Sidebar() {
   const {
+    connectionStatus,
+    dataError,
+    dataMode,
     leaveParking,
+    lastUpdatedAt,
     parkedLot,
     recommendations,
+    refreshRealData,
     selectedFloor,
     selectLot,
+    setDataMode,
     setFloor,
     setViewMode,
     stats,
@@ -110,6 +202,15 @@ export function Sidebar() {
           </div>
         </div>
       </section>
+
+      <DataModeControl
+        connectionStatus={connectionStatus}
+        dataError={dataError}
+        dataMode={dataMode}
+        lastUpdatedAt={lastUpdatedAt}
+        onRefresh={refreshRealData}
+        onSelectMode={setDataMode}
+      />
 
       <SegmentedControl
         label="Lantai"

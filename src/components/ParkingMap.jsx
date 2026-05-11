@@ -30,6 +30,7 @@ function MetricCard({ label, value, accent = "text-white" }) {
 
 export function ParkingMap({ onRequestPark }) {
   const {
+    canManuallyPark,
     parkedCarId,
     parkingLots,
     recommendations,
@@ -75,12 +76,12 @@ export function ParkingMap({ onRequestPark }) {
   const handleSlotClick = useCallback((lot) => {
     selectLot(lot.id);
 
-    if (lot.isOccupied || parkedCarId) {
+    if (lot.isOccupied || parkedCarId || !canManuallyPark) {
       return;
     }
 
     onRequestPark(lot);
-  }, [onRequestPark, parkedCarId, selectLot]);
+  }, [canManuallyPark, onRequestPark, parkedCarId, selectLot]);
 
   return (
     <section className="min-w-0 space-y-4 text-white">
@@ -136,7 +137,11 @@ export function ParkingMap({ onRequestPark }) {
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-sm font-semibold">Live parking layout</h3>
-            <p className="text-xs text-white/55">Pilih slot hijau untuk parkir.</p>
+            <p className="text-xs text-white/55">
+              {canManuallyPark
+                ? "Pilih slot hijau untuk parkir."
+                : "Mode real membaca status dari Supabase."}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-3 rounded-full bg-white/10 px-3 py-2">
             <LegendItem

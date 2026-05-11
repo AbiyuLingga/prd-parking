@@ -3,8 +3,10 @@ import {
   Bell,
   Car,
   CheckCircle2,
+  Database,
   Home,
   Navigation,
+  RefreshCw,
   TimerReset,
 } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -105,14 +107,20 @@ function MobileParkingSlot({ lot, isRecommended, isSelected, onSelect, rank }) {
 
 export function MobileParkingView({ onRequestPark }) {
   const {
+    canManuallyPark,
+    connectionStatus,
+    dataError,
+    dataMode,
     leaveParking,
     parkedCarId,
     parkedLot,
     parkingLots,
     recommendations,
+    refreshRealData,
     selectedFloor,
     selectedLotId,
     selectLot,
+    setDataMode,
     setFloor,
     setViewMode,
     viewMode,
@@ -145,13 +153,13 @@ export function MobileParkingView({ onRequestPark }) {
     (lot) => {
       selectLot(lot.id);
 
-      if (lot.isOccupied || parkedCarId) {
+      if (lot.isOccupied || parkedCarId || !canManuallyPark) {
         return;
       }
 
       onRequestPark(lot);
     },
-    [onRequestPark, parkedCarId, selectLot],
+    [canManuallyPark, onRequestPark, parkedCarId, selectLot],
   );
 
   const handleOpenMap = useCallback(
@@ -201,6 +209,65 @@ export function MobileParkingView({ onRequestPark }) {
             value={`${floorAvailable}/${floorLots.length}`}
           />
           <MobileStatCard title="Recommended" value={nearestLot?.id ?? "-"} />
+        </div>
+
+        <div className="rounded-[20px] border border-white/5 bg-[#2a2723]/72 p-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-white/65">
+              <Database size={14} />
+              Mode Data
+            </div>
+            {dataMode === "real" && (
+              <button
+                aria-label="Refresh Supabase"
+                className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white/70"
+                onClick={refreshRealData}
+                type="button"
+              >
+                <RefreshCw size={14} />
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 rounded-[14px] border border-white/5 bg-black/18 p-1">
+            {[
+              { label: "Simulasi", value: "simulation" },
+              { label: "Real", value: "real" },
+            ].map((option) => (
+              <button
+                className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                  dataMode === option.value
+                    ? "bg-[#ff6845] text-white"
+                    : "text-white/50"
+                }`}
+                key={option.value}
+                onClick={() => setDataMode(option.value)}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex justify-between gap-3 text-xs">
+            <span className="text-white/45">Status</span>
+            <span
+              className={
+                connectionStatus === "offline" ? "text-red-100" : "text-emerald-200"
+              }
+            >
+              {connectionStatus === "live"
+                ? "Supabase live"
+                : connectionStatus === "connecting"
+                  ? "Menghubungkan"
+                  : connectionStatus === "offline"
+                    ? "Offline"
+                    : "Simulasi lokal"}
+            </span>
+          </div>
+          {dataError && (
+            <div className="mt-2 rounded-lg border border-red-200/15 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+              {dataError}
+            </div>
+          )}
         </div>
 
         <div>
