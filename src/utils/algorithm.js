@@ -22,11 +22,15 @@ export function getRecommendations(parkingLots) {
       costScore: Number(calculateScore(lot).toFixed(1)),
     }))
     .sort((first, second) => {
-      if (first.costScore !== second.costScore) {
-        return first.costScore - second.costScore;
+      if (first.jarakLobby !== second.jarakLobby) {
+        return first.jarakLobby - second.jarakLobby;
       }
 
-      return first.jarakLobby - second.jarakLobby;
+      if (first.kepadatanPrediksi !== second.kepadatanPrediksi) {
+        return first.kepadatanPrediksi - second.kepadatanPrediksi;
+      }
+
+      return first.costScore - second.costScore;
     })
     .slice(0, 3);
 }

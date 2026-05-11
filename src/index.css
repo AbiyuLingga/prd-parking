@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  color: #d8e2f0;
-  background: #0a0e1a;
+  color: #f4efe6;
+  background: #1f201c;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -42,27 +42,29 @@ button {
     "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
-@keyframes pulse-recommend {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 2px rgba(254, 249, 195, 0.95),
-      0 0 24px rgba(250, 204, 21, 0.45);
-    transform: scale(1);
-  }
-
-  50% {
-    box-shadow:
-      0 0 0 4px rgba(254, 249, 195, 1),
-      0 0 44px rgba(250, 204, 21, 0.85);
-    transform: scale(1.025);
-  }
+.dashboard-room-bg {
+  background-image: url("/gedung_itb2.jpg");
+  background-position: center;
+  background-size: cover;
 }
 
-@keyframes dash-animate {
-  to {
-    stroke-dashoffset: -36;
-  }
+.dashboard-room-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.55),
+    rgba(0, 0, 0, 0.24) 42%,
+    rgba(0, 0, 0, 0.6)
+  );
+}
+
+.dashboard-room-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.66));
 }
 
 @keyframes modal-in {
@@ -77,23 +79,63 @@ button {
   }
 }
 
-@keyframes soft-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
 .animate-modal-in {
   animation: modal-in 180ms ease-out;
 }
 
-.animate-soft-float {
-  animation: soft-float 6s ease-in-out infinite;
+.static-glass {
+  isolation: isolate;
+  overflow: hidden;
+  position: relative;
+}
+
+.static-glass::before,
+.static-glass::after {
+  border-radius: inherit;
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
+
+.static-glass::before {
+  background-image: url("/gedung_itb2_blur.jpg");
+  background-position: center;
+  background-size: cover;
+  opacity: 0.42;
+}
+
+.static-glass::after {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent 42%),
+    rgba(15, 14, 12, 0.7);
+}
+
+.static-glass-panel::before {
+  opacity: 0.48;
+}
+
+.static-glass-panel::after {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.11), transparent 46%),
+    rgba(33, 31, 25, 0.66);
+}
+
+.static-glass-modal::before {
+  opacity: 0.34;
+}
+
+.static-glass-nav::after,
+.static-glass-modal::after {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent 44%),
+    rgba(13, 12, 10, 0.76);
+}
+
+.parking-stage,
+.parking-slot {
+  contain: layout paint;
 }
 
 .scrollbar-thin {
@@ -107,4 +149,15 @@ button {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.35);
   border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
 }

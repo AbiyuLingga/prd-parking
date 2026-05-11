@@ -1,12 +1,10 @@
 import {
   ArrowRight,
   Car,
+  CheckCircle2,
   MapPinned,
   Navigation,
-  ParkingCircle,
-  Route,
   TimerReset,
-  Users,
 } from "lucide-react";
 import { useParking } from "../context/ParkingContext";
 
@@ -21,7 +19,7 @@ function SegmentedControl({ label, value, options, onChange }) {
           <button
             className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
               value === option.value
-                ? "bg-cyan-400 text-slate-950"
+                ? "bg-[#ff6845] text-white"
                 : "text-slate-300 hover:bg-white/8 hover:text-white"
             }`}
             key={option.value}
@@ -36,47 +34,32 @@ function SegmentedControl({ label, value, options, onChange }) {
   );
 }
 
-function StatTile({ icon: Icon, label, value, tone }) {
-  return (
-    <div className="rounded-lg border border-white/10 bg-slate-950/45 p-3">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-400">{label}</span>
-        <Icon className={tone} size={18} />
-      </div>
-      <div className="font-data text-2xl font-semibold text-white">{value}</div>
-    </div>
-  );
-}
-
 function RecommendationCard({ lot, rank, onSelect }) {
   return (
     <button
-      className="group w-full rounded-lg border border-emerald-300/20 bg-emerald-300/8 p-3 text-left transition hover:border-emerald-200/60 hover:bg-emerald-300/14"
+      className="group w-full rounded-[14px] border border-white/10 bg-white/8 p-3 text-left transition hover:border-[#c2ba95]/60 hover:bg-white/12"
       onClick={() => onSelect(lot.id)}
       type="button"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-emerald-300 text-xs font-bold text-slate-950">
+      <div className="flex items-start gap-3">
+        <div className="flex min-w-0 flex-1 gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[linear-gradient(135deg,#d8cfaa,#918c70)] text-[#1f201c]">
+            <span className="font-data text-xs font-bold">{lot.id.split("-")[1]}</span>
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="grid h-5 w-5 place-items-center rounded-md bg-[#c2ba95] text-xs font-bold text-[#1f201c]">
               {rank}
-            </span>
-            <span className="font-data text-base font-semibold text-white">
-              {lot.id}
-            </span>
+              </span>
+              <span className="font-data text-sm font-semibold text-white">
+                {lot.id}
+              </span>
+            </div>
+            <div className="mt-1 text-xs text-white/55">{lot.jarakLobby}m ke lobby</div>
           </div>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-300">
-            <span>{lot.jarakLobby}m ke lobby</span>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="font-data text-sm font-semibold text-emerald-200">
-            {lot.costScore}
-          </div>
-          <div className="text-[11px] text-slate-500">score</div>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-1 text-xs font-medium text-emerald-200">
+      <div className="mt-3 flex items-center gap-1 text-xs font-medium text-[#d8cfaa]">
         Sorot di map
         <ArrowRight
           className="transition group-hover:translate-x-1"
@@ -101,77 +84,65 @@ export function Sidebar() {
   } = useParking();
 
   return (
-    <aside className="flex w-full max-w-[calc(100vw-32px)] min-w-0 flex-col overflow-hidden rounded-lg border border-white/10 bg-slate-900/72 shadow-2xl shadow-black/30 backdrop-blur lg:max-h-[calc(100vh-48px)] lg:w-[390px] lg:max-w-none">
-      <div className="border-b border-white/10 p-5">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-lg bg-cyan-300 text-slate-950">
-            <ParkingCircle size={26} />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-white">
-              Smart Parking System
-            </h1>
-            <p className="text-sm text-slate-400">
-              Simulasi rekomendasi slot parkir
-            </p>
+    <aside className="flex min-w-0 flex-col gap-4 rounded-[22px] border border-white/12 bg-white/12 p-4 text-white shadow-lg shadow-black/15">
+      <section className="rounded-[18px] border border-white/12 bg-black/14 p-4">
+        <div className="mb-4">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold">ITB Parking</div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <StatTile
-            icon={MapPinned}
-            label="Kosong"
-            tone="text-emerald-200"
-            value={`${stats.available}/${stats.total}`}
-          />
-          <StatTile
-            icon={Car}
-            label="Terisi"
-            tone="text-red-300"
-            value={`${stats.occupiedPercentage}%`}
-          />
+        <div className="space-y-2 text-xs">
+          <div className="flex justify-between gap-3">
+            <span className="text-white/55">Location</span>
+            <span className="text-right">Main Entrance</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-white/55">Empty slots</span>
+            <span className="font-data">{stats.available}/{stats.total}</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-white/55">System</span>
+            <span className="inline-flex items-center gap-1 text-emerald-200">
+              <CheckCircle2 size={13} />
+              Online
+            </span>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="scrollbar-thin flex-1 space-y-5 overflow-y-auto p-5">
-        <section className="space-y-3">
-          <SegmentedControl
-            label="Lantai"
-            onChange={setFloor}
-            options={[
-              { label: "Lantai 1", value: 1 },
-              { label: "Lantai 2", value: 2 },
-            ]}
-            value={selectedFloor}
-          />
-        </section>
+      <SegmentedControl
+        label="Lantai"
+        onChange={setFloor}
+        options={[
+          { label: "Lantai 1", value: 1 },
+          { label: "Lantai 2", value: 2 },
+        ]}
+        value={selectedFloor}
+      />
 
+      <section className="scrollbar-thin min-h-0 flex-1 overflow-y-auto rounded-[18px] border border-white/12 bg-black/14 p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold">
+            {parkedLot ? "My Parking" : "Recommended Spots"}
+          </h2>
+        </div>
         {!parkedLot && (
-          <section>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase text-slate-400">
-                Rekomendasi
-              </h2>
-              <span className="rounded-md border border-white/10 px-2 py-1 text-xs text-slate-300">
-                Top 3
-              </span>
-            </div>
-            <div className="space-y-2">
-              {recommendations.map((lot, index) => (
-                <RecommendationCard
-                  key={lot.id}
-                  lot={lot}
-                  onSelect={selectLot}
-                  rank={index + 1}
-                />
-              ))}
-            </div>
-          </section>
+          <div className="space-y-3">
+            {recommendations.map((lot, index) => (
+              <RecommendationCard
+                key={lot.id}
+                lot={lot}
+                onSelect={selectLot}
+                rank={index + 1}
+              />
+            ))}
+          </div>
         )}
 
         {parkedLot && (
-          <section className="rounded-lg border border-cyan-200/25 bg-cyan-300/8 p-4">
-            <div className="mb-3 flex items-center gap-2 text-cyan-100">
+          <div className="rounded-[14px] border border-orange-200/25 bg-orange-300/8 p-4">
+            <div className="mb-3 flex items-center gap-2 text-orange-100">
               <Car size={18} />
               <h2 className="text-sm font-semibold">Mobil Terparkir</h2>
             </div>
@@ -187,8 +158,8 @@ export function Sidebar() {
               <button
                 className={`flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition ${
                   viewMode === "pedestrian_route"
-                    ? "bg-cyan-200 text-slate-950"
-                    : "bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                    ? "bg-[#ff6845] text-white"
+                    : "bg-[#ffb547] text-slate-950 hover:bg-[#ffc96b]"
                 }`}
                 onClick={() => setViewMode("pedestrian_route")}
                 type="button"
@@ -205,45 +176,9 @@ export function Sidebar() {
                 Keluar Parkir
               </button>
             </div>
-          </section>
+          </div>
         )}
-      </div>
-
-      <div className="border-t border-white/10 p-5">
-        <div className="flex items-center justify-between rounded-lg bg-slate-950/50 p-3">
-          <div className="flex items-center gap-2 text-sm text-slate-300">
-            <Users size={16} />
-            Mode tampilan
-          </div>
-          <div className="flex gap-1">
-            <button
-              className={`rounded-md px-3 py-2 text-xs font-semibold ${
-                viewMode === "map"
-                  ? "bg-white text-slate-950"
-                  : "text-slate-300 hover:bg-white/8"
-              }`}
-              onClick={() => setViewMode("map")}
-              type="button"
-            >
-              Map
-            </button>
-            <button
-              className={`rounded-md px-3 py-2 text-xs font-semibold ${
-                viewMode === "pedestrian_route"
-                  ? "bg-white text-slate-950"
-                  : "text-slate-300 hover:bg-white/8"
-              }`}
-              onClick={() => setViewMode("pedestrian_route")}
-              type="button"
-            >
-              <span className="inline-flex items-center gap-1">
-                <Route size={13} />
-                Rute
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
+      </section>
     </aside>
   );
 }

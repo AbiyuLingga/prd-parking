@@ -21,7 +21,7 @@ export function PedestrianRoute({ floor, parkedLotId }) {
 
   if (!parkedLot || parkedLot.floor !== floor) {
     return (
-      <div className="absolute left-1/2 top-8 z-20 -translate-x-1/2 rounded-lg border border-amber-300/30 bg-amber-300/12 px-4 py-2 text-sm text-amber-100 backdrop-blur">
+      <div className="absolute left-1/2 top-8 z-20 -translate-x-1/2 rounded-lg border border-amber-300/30 bg-amber-300/12 px-4 py-2 text-sm text-amber-100">
         Mobil berada di Lantai {parkedLot?.floor ?? "-"}
       </div>
     );
@@ -45,11 +45,10 @@ export function PedestrianRoute({ floor, parkedLotId }) {
         <path
           d={path}
           fill="none"
-          stroke="rgba(34,211,238,0.95)"
+          stroke="rgba(255,181,71,0.95)"
           strokeDasharray="12 10"
           strokeLinecap="round"
           strokeWidth="7"
-          style={{ animation: "dash-animate 900ms linear infinite" }}
         />
         <path
           d={path}
@@ -61,13 +60,13 @@ export function PedestrianRoute({ floor, parkedLotId }) {
       </svg>
 
       <div
-        className="absolute grid h-11 w-11 place-items-center rounded-lg border border-cyan-100 bg-slate-950 text-cyan-100 shadow-[0_0_28px_rgba(34,211,238,0.35)]"
+        className="absolute grid h-11 w-11 place-items-center rounded-lg border border-orange-100 bg-slate-950 text-orange-100 shadow-sm"
         style={{ left: start.x - 22, top: start.y - 22 }}
       >
         <DoorOpen size={21} />
       </div>
       <div
-        className="absolute grid h-11 w-11 place-items-center rounded-lg border border-emerald-100 bg-slate-950 text-emerald-100 shadow-[0_0_28px_rgba(16,185,129,0.35)]"
+        className="absolute grid h-11 w-11 place-items-center rounded-lg border border-emerald-100 bg-slate-950 text-emerald-100 shadow-sm"
         style={{ left: end.x - 22, top: end.y - 22 }}
       >
         <CarFront size={21} />

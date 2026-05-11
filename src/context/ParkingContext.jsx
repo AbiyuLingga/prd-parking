@@ -85,7 +85,6 @@ export function ParkingProvider({ children }) {
       total,
       occupied,
       available,
-      occupiedPercentage: Math.round((occupied / total) * 100),
     };
   }, [state.parkingLots]);
 
