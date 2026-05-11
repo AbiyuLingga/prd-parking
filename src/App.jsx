@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { ParkingProvider } from "./context/ParkingContext";
 import { ConfirmModal } from "./components/ConfirmModal";
+import { MobileParkingView } from "./components/MobileParkingView";
 import { ParkingMap } from "./components/ParkingMap";
 import { Sidebar } from "./components/Sidebar";
 import { useParking } from "./context/ParkingContext";
@@ -32,7 +33,6 @@ function TopNavigation() {
         type="button"
       >
         <Bell size={16} />
-        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#ff6845]" />
       </button>
       <div className="hidden items-center gap-3 sm:flex">
         <div className="h-9 w-9 rounded-full bg-[linear-gradient(135deg,#ffd6a6,#ff6845)]" />
@@ -59,14 +59,18 @@ function ParkingDashboard() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#1f201c] text-white">
+    <main className="relative min-h-screen overflow-x-hidden bg-[#1f201c] text-white">
       <div className="dashboard-room-bg absolute inset-0" />
       <div className="absolute inset-0 bg-black/30" />
 
-      <div className="relative mx-auto min-h-screen w-full max-w-[1380px] px-4 py-4 sm:px-7">
-        <TopNavigation />
+      <div className="relative mx-auto min-h-screen w-full max-w-[1380px] px-0 py-0 lg:px-7 lg:py-4">
+        <div className="hidden lg:block">
+          <TopNavigation />
+        </div>
 
-        <div className="static-glass static-glass-panel grid min-h-[650px] grid-cols-1 gap-4 rounded-[28px] border border-white/14 bg-[#4e4b43]/66 p-4 shadow-lg shadow-black/20 lg:grid-cols-[minmax(0,1fr)_288px]">
+        <MobileParkingView onRequestPark={setPendingLot} />
+
+        <div className="static-glass static-glass-panel hidden min-h-[650px] grid-cols-1 gap-4 rounded-[28px] border border-white/14 bg-[#4e4b43]/66 p-4 shadow-lg shadow-black/20 lg:grid lg:grid-cols-[minmax(0,1fr)_288px]">
           <ParkingMap onRequestPark={setPendingLot} />
           <Sidebar />
         </div>
