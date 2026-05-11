@@ -6,6 +6,7 @@ export function ConfirmModal({ lot, mode = "simulation", onCancel, onConfirm }) 
   }
 
   const isRealMode = mode === "real";
+  const isFallbackRealSlot = isRealMode && lot.isFallbackData;
 
   return (
     <div
@@ -29,7 +30,9 @@ export function ConfirmModal({ lot, mode = "simulation", onCancel, onConfirm }) 
               </h2>
               <p className="text-sm text-white/58">
                 {isRealMode
-                  ? "Slot ini kosong berdasarkan data Supabase."
+                  ? isFallbackRealSlot
+                    ? "Slot ini kosong dari fallback tampilan, belum ada row Supabase."
+                    : "Slot ini kosong berdasarkan data Supabase."
                   : "Slot ini tersedia dan bisa langsung dipakai."}
               </p>
             </div>
@@ -84,11 +87,16 @@ export function ConfirmModal({ lot, mode = "simulation", onCancel, onConfirm }) 
           </button>
           {isRealMode ? (
             <button
-              className="rounded-xl bg-[#ff6845] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#ff7d5e]"
-              onClick={onConfirm}
+              className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                isFallbackRealSlot
+                  ? "bg-white/10 text-white/45"
+                  : "bg-[#ff6845] text-white hover:bg-[#ff7d5e]"
+              }`}
+              disabled={isFallbackRealSlot}
+              onClick={isFallbackRealSlot ? undefined : onConfirm}
               type="button"
             >
-              Tandai Terisi
+              {isFallbackRealSlot ? "Belum Ada Row" : "Tandai Terisi"}
             </button>
           ) : (
             <button

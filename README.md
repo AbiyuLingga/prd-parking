@@ -268,6 +268,14 @@ L{level_id + 1}-{zone_id}{slot_number}
 ```
 
 Jika data Supabase memiliki `slot_number = 0`, frontend otomatis menganggap nomor slot memakai format zero-based `0-5`, lalu mengubahnya menjadi layout web `1-6`.
+Nilai `zone_id` juga otomatis dipetakan:
+
+```txt
+kiri  -> A
+kanan -> B
+```
+
+Di mode real, slot layout yang tidak punya pasangan row Supabase memakai fallback tampilan 50% terisi dan 50% kosong. Slot fallback yang kosong bisa dilihat detailnya, tetapi tidak bisa diupdate sampai row sebenarnya dibuat di Supabase.
 
 Contoh:
 
@@ -297,8 +305,12 @@ true, 1, "true", "occupied", "terisi", "full"
 ### Mode Real
 
 - Data dibaca dari Supabase.
+- Slot yang ada row Supabase memakai status `is_filled` asli.
+- Slot yang belum ada row Supabase memakai fallback tampilan 50% terisi dan 50% kosong.
 - Klik slot kosong membuka modal detail.
 - Tombol `Tandai Terisi` mengubah `is_filled` menjadi `true` di Supabase.
+- Slot fallback belum bisa diupdate karena row-nya belum ada di Supabase.
+- Tombol reset random di panel Mode Data mengacak semua row Supabase menjadi sekitar 50% terisi dan 50% kosong.
 - Setelah update, dashboard mengambil ulang data Supabase.
 - Tombol refresh tersedia untuk mengambil ulang data Supabase.
 

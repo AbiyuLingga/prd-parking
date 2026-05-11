@@ -76,12 +76,12 @@ export function ParkingMap({ onRequestPark }) {
   const handleSlotClick = useCallback((lot) => {
     selectLot(lot.id);
 
-    if (lot.isOccupied || (parkedCarId && canManuallyPark)) {
+    if (lot.isOccupied || parkedCarId) {
       return;
     }
 
     onRequestPark(lot);
-  }, [canManuallyPark, onRequestPark, parkedCarId, selectLot]);
+  }, [onRequestPark, parkedCarId, selectLot]);
 
   return (
     <section className="min-w-0 space-y-4 text-white">

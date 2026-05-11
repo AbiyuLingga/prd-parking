@@ -5,6 +5,7 @@ import {
   Database,
   Navigation,
   RefreshCw,
+  Shuffle,
   TimerReset,
 } from "lucide-react";
 import { useParking } from "../context/ParkingContext";
@@ -41,6 +42,7 @@ function DataModeControl({
   dataMode,
   lastUpdatedAt,
   onRefresh,
+  onReset,
   onSelectMode,
 }) {
   const statusLabel = {
@@ -58,14 +60,26 @@ function DataModeControl({
           Mode Data
         </div>
         {dataMode === "real" && (
-          <button
-            aria-label="Refresh Supabase"
-            className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/8 text-white/70 transition hover:bg-white/12"
-            onClick={onRefresh}
-            type="button"
-          >
-            <RefreshCw size={14} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              aria-label="Reset random parkiran"
+              className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/8 text-white/70 transition hover:bg-white/12"
+              onClick={onReset}
+              title="Reset random parkiran"
+              type="button"
+            >
+              <Shuffle size={14} />
+            </button>
+            <button
+              aria-label="Refresh Supabase"
+              className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/8 text-white/70 transition hover:bg-white/12"
+              onClick={onRefresh}
+              title="Refresh Supabase"
+              type="button"
+            >
+              <RefreshCw size={14} />
+            </button>
+          </div>
         )}
       </div>
 
@@ -166,6 +180,7 @@ export function Sidebar() {
     parkedLot,
     recommendations,
     refreshRealData,
+    resetRealParking,
     selectedFloor,
     selectLot,
     setDataMode,
@@ -209,6 +224,7 @@ export function Sidebar() {
         dataMode={dataMode}
         lastUpdatedAt={lastUpdatedAt}
         onRefresh={refreshRealData}
+        onReset={resetRealParking}
         onSelectMode={setDataMode}
       />
 
@@ -262,7 +278,11 @@ export function Sidebar() {
                     ? "bg-[#ff6845] text-white"
                     : "bg-[#ffb547] text-slate-950 hover:bg-[#ffc96b]"
                 }`}
-                onClick={() => setViewMode("pedestrian_route")}
+                onClick={() =>
+                  setViewMode(
+                    viewMode === "pedestrian_route" ? "map" : "pedestrian_route",
+                  )
+                }
                 type="button"
               >
                 <Navigation size={18} />

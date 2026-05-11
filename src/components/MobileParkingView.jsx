@@ -7,6 +7,7 @@ import {
   Home,
   Navigation,
   RefreshCw,
+  Shuffle,
   TimerReset,
 } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -117,6 +118,7 @@ export function MobileParkingView({ onRequestPark }) {
     parkingLots,
     recommendations,
     refreshRealData,
+    resetRealParking,
     selectedFloor,
     selectedLotId,
     selectLot,
@@ -153,13 +155,13 @@ export function MobileParkingView({ onRequestPark }) {
     (lot) => {
       selectLot(lot.id);
 
-      if (lot.isOccupied || (parkedCarId && canManuallyPark)) {
+      if (lot.isOccupied || parkedCarId) {
         return;
       }
 
       onRequestPark(lot);
     },
-    [canManuallyPark, onRequestPark, parkedCarId, selectLot],
+    [onRequestPark, parkedCarId, selectLot],
   );
 
   const handleOpenMap = useCallback(
@@ -218,14 +220,24 @@ export function MobileParkingView({ onRequestPark }) {
               Mode Data
             </div>
             {dataMode === "real" && (
-              <button
-                aria-label="Refresh Supabase"
-                className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white/70"
-                onClick={refreshRealData}
-                type="button"
-              >
-                <RefreshCw size={14} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  aria-label="Reset random parkiran"
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white/70"
+                  onClick={resetRealParking}
+                  type="button"
+                >
+                  <Shuffle size={14} />
+                </button>
+                <button
+                  aria-label="Refresh Supabase"
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white/70"
+                  onClick={refreshRealData}
+                  type="button"
+                >
+                  <RefreshCw size={14} />
+                </button>
+              </div>
             )}
           </div>
           <div className="grid grid-cols-2 rounded-[14px] border border-white/5 bg-black/18 p-1">
@@ -300,7 +312,11 @@ export function MobileParkingView({ onRequestPark }) {
                       ? "bg-[#ff6845] text-white"
                       : "bg-[#ffb547] text-[#201d19]"
                   }`}
-                  onClick={() => setViewMode("pedestrian_route")}
+                  onClick={() =>
+                    setViewMode(
+                      viewMode === "pedestrian_route" ? "map" : "pedestrian_route",
+                    )
+                  }
                   type="button"
                 >
                   <Navigation size={16} />

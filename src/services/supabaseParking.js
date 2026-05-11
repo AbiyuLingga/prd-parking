@@ -61,7 +61,21 @@ function normalizeRowLabel(row, id) {
     readFirst(row, ["zone_id", "zoneId", "area_id", "areaId"]) ??
     id?.match(/-([A-Z])\d+/)?.[1];
 
-  return rowValue ? String(rowValue).trim().charAt(0).toUpperCase() : undefined;
+  if (!rowValue) {
+    return undefined;
+  }
+
+  const normalizedValue = String(rowValue).trim().toLowerCase();
+
+  if (["kiri", "left", "a", "zone_a", "zona_a"].includes(normalizedValue)) {
+    return "A";
+  }
+
+  if (["kanan", "right", "b", "zone_b", "zona_b"].includes(normalizedValue)) {
+    return "B";
+  }
+
+  return String(rowValue).trim().charAt(0).toUpperCase();
 }
 
 function buildLayoutId({ id, floor, row, column }) {
@@ -93,9 +107,20 @@ function normalizeSlotRow(row) {
     readFirst(row, ["column", "col", "slot_number", "slotNumber"]) ??
       rawId?.match(/(\d+)$/)?.[1],
   );
+  const rawLevelId = readFirst(row, ["level_id", "levelId"]);
+  const rawZoneId = readFirst(row, ["zone_id", "zoneId"]);
+  const rawAreaId = readFirst(row, ["area_id", "areaId"]);
+  const rawSlotNumber = readFirst(row, ["slot_number", "slotNumber"]);
 
   return {
     rawId,
+    source: {
+      parkingId: rawId,
+      levelId: rawLevelId,
+      zoneId: rawZoneId,
+      areaId: rawAreaId,
+      slotNumber: rawSlotNumber,
+    },
     floor,
     row: rowLabel,
     column: rawColumn,
@@ -119,9 +144,16 @@ export function isSupabaseConfigured() {
 }
 
 export function mergeRealRowsWithBaseLayout(rows) {
-  const baseLots = generateParkingLots().map((lot) => ({ ...lot, isOccupied: false }));
+  const baseLots = generateParkingLots().map((lot, index) => ({
+    ...lot,
+    isOccupied: index % 2 === 0,
+    isFallbackData: true,
+  }));
   const baseById = new Map(baseLots.map((lot) => [lot.id, lot]));
   const normalizedSlots = rows.map(normalizeSlotRow);
+  const usesZeroBasedLevels = normalizedSlots.some(
+    (slot) => Number(slot.source?.levelId) === 0,
+  );
   const usesZeroBasedSlotNumbers = normalizedSlots.some(
     (slot) =>
       Number.isFinite(slot.column) &&
@@ -130,6 +162,12 @@ export function mergeRealRowsWithBaseLayout(rows) {
   );
 
   normalizedSlots.forEach((slot) => {
+    const sourceLevel = Number(slot.source?.levelId);
+    const floor = Number.isFinite(sourceLevel)
+      ? usesZeroBasedLevels
+        ? sourceLevel + 1
+        : sourceLevel
+      : slot.floor;
     const column =
       usesZeroBasedSlotNumbers &&
       Number.isFinite(slot.column) &&
@@ -138,7 +176,7 @@ export function mergeRealRowsWithBaseLayout(rows) {
         : slot.column;
     const id = buildLayoutId({
       id: slot.rawId,
-      floor: slot.floor,
+      floor,
       row: slot.row,
       column,
     });
@@ -150,10 +188,12 @@ export function mergeRealRowsWithBaseLayout(rows) {
     const baseLot = baseById.get(id);
     baseById.set(id, {
       ...baseLot,
-      floor: Number.isFinite(slot.floor) ? slot.floor : baseLot.floor,
+      floor: Number.isFinite(floor) ? floor : baseLot.floor,
       row: slot.row ?? baseLot.row,
       column: Number.isFinite(column) ? column : baseLot.column,
       isOccupied: slot.isOccupied,
+      isFallbackData: false,
+      supabaseRef: slot.source,
       updatedAt: slot.updatedAt,
     });
   });
@@ -180,17 +220,49 @@ export async function fetchRealParkingLots() {
 function layoutFieldsFromLot(lot) {
   const id = typeof lot === "string" ? lot : lot.id;
   const match = id?.match(/^L(\d+)-([A-Z])(\d+)$/);
+  const floor = Number(match?.[1] ?? lot.floor);
 
   return {
     id,
-    levelId: Number(match?.[1] ?? lot.floor) - 1,
+    floor,
+    zeroBasedLevelId: floor - 1,
+    oneBasedLevelId: floor,
     zoneId: match?.[2] ?? lot.row,
     slotNumber: Number(match?.[3] ?? lot.column),
   };
 }
 
-async function updateAndReturnRows(query, payload) {
-  const { data, error } = await query.update(payload).select("parking_id");
+function isUsableFilterValue(value) {
+  return value !== undefined && value !== null && value !== "";
+}
+
+function dedupeFilters(filtersList) {
+  const seen = new Set();
+
+  return filtersList.filter((filters) => {
+    if (!filters.every(([, value]) => isUsableFilterValue(value))) {
+      return false;
+    }
+
+    const key = JSON.stringify(filters);
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+async function updateAndReturnRows(client, filters, payload) {
+  let query = client.from(parkingTable).update(payload);
+
+  filters.forEach(([column, value]) => {
+    query = query.eq(column, value);
+  });
+
+  const { data, error } = await query.select("parking_id");
 
   if (error) {
     throw error;
@@ -206,51 +278,118 @@ export async function updateRealParkingSlot(lot, isFilled) {
     throw new Error("Supabase env belum diisi");
   }
 
-  const { id, levelId, zoneId, slotNumber } = layoutFieldsFromLot(lot);
+  const { id, floor, zeroBasedLevelId, oneBasedLevelId, zoneId, slotNumber } =
+    layoutFieldsFromLot(lot);
   const payload = { is_filled: isFilled };
+  const supabaseRef = lot?.supabaseRef ?? {};
 
-  if (id) {
-    const rows = await updateAndReturnRows(
-      client.from(parkingTable).eq("parking_id", id),
-      payload,
-    );
+  if (!Number.isFinite(floor) || !zoneId || !Number.isFinite(slotNumber)) {
+    throw new Error("Slot tidak punya mapping level/zone/nomor yang valid.");
+  }
+
+  const levelCandidates = [
+    supabaseRef.levelId,
+    zeroBasedLevelId,
+    oneBasedLevelId,
+  ].filter((value, index, values) => isUsableFilterValue(value) && values.indexOf(value) === index);
+  const zoneCandidates = [
+    supabaseRef.zoneId,
+    zoneId,
+    zoneId === "A" ? "kiri" : undefined,
+    zoneId === "B" ? "kanan" : undefined,
+    String(zoneId).toLowerCase(),
+    String(zoneId).toUpperCase(),
+  ].filter((value, index, values) => isUsableFilterValue(value) && values.indexOf(value) === index);
+  const areaCandidates = [
+    supabaseRef.areaId,
+    zoneId,
+    String(zoneId).toLowerCase(),
+    String(zoneId).toUpperCase(),
+  ].filter((value, index, values) => isUsableFilterValue(value) && values.indexOf(value) === index);
+  const slotNumberCandidates = [
+    supabaseRef.slotNumber,
+    slotNumber - 1,
+    slotNumber,
+  ].filter((value, index, values) => isUsableFilterValue(value) && values.indexOf(value) === index);
+
+  const candidateFilters = dedupeFilters([
+    [["parking_id", supabaseRef.parkingId]],
+    [["parking_id", id]],
+    ...levelCandidates.flatMap((levelId) =>
+      zoneCandidates.flatMap((zoneValue) =>
+        slotNumberCandidates.map((slotValue) => [
+          ["level_id", levelId],
+          ["zone_id", zoneValue],
+          ["slot_number", slotValue],
+        ]),
+      ),
+    ),
+    ...levelCandidates.flatMap((levelId) =>
+      areaCandidates.flatMap((areaValue) =>
+        slotNumberCandidates.map((slotValue) => [
+          ["level_id", levelId],
+          ["area_id", areaValue],
+          ["slot_number", slotValue],
+        ]),
+      ),
+    ),
+  ]);
+
+  for (const filters of candidateFilters) {
+    const rows = await updateAndReturnRows(client, filters, payload);
 
     if (rows.length > 0) {
       return rows;
     }
   }
 
-  if (!Number.isFinite(levelId) || !zoneId || !Number.isFinite(slotNumber)) {
-    throw new Error("Slot tidak punya mapping level/zone/nomor yang valid.");
+  throw new Error(
+    `Slot Supabase tidak ditemukan untuk diupdate. UI=${id}, filter dicoba=${JSON.stringify(
+      candidateFilters,
+    )}`,
+  );
+}
+
+export async function randomizeRealParkingSlots() {
+  const client = getSupabaseClient();
+
+  if (!client) {
+    throw new Error("Supabase env belum diisi");
   }
 
-  const zeroBasedRows = await updateAndReturnRows(
-    client
-      .from(parkingTable)
-      .eq("level_id", levelId)
-      .eq("zone_id", zoneId)
-      .eq("slot_number", slotNumber - 1),
-    payload,
+  const { data, error } = await client.from(parkingTable).select("parking_id");
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = data ?? [];
+
+  if (rows.length === 0) {
+    throw new Error("Tabel Supabase belum punya data slot untuk di-random.");
+  }
+
+  const shuffledRows = [...rows].sort(() => Math.random() - 0.5);
+  const filledCount = Math.floor(shuffledRows.length / 2);
+  const filledIds = new Set(
+    shuffledRows.slice(0, filledCount).map((row) => row.parking_id),
   );
 
-  if (zeroBasedRows.length > 0) {
-    return zeroBasedRows;
-  }
-
-  const oneBasedRows = await updateAndReturnRows(
+  const updates = rows.map((row) =>
     client
       .from(parkingTable)
-      .eq("level_id", levelId)
-      .eq("zone_id", zoneId)
-      .eq("slot_number", slotNumber),
-    payload,
+      .update({ is_filled: filledIds.has(row.parking_id) })
+      .eq("parking_id", row.parking_id),
   );
 
-  if (oneBasedRows.length === 0) {
-    throw new Error("Slot Supabase tidak ditemukan untuk diupdate.");
+  const results = await Promise.all(updates);
+  const failedResult = results.find((result) => result.error);
+
+  if (failedResult) {
+    throw failedResult.error;
   }
 
-  return oneBasedRows;
+  return rows.length;
 }
 
 export function subscribeToParkingChanges(onChange, onError) {

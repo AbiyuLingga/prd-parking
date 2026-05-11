@@ -10,6 +10,7 @@ import { generateParkingLots } from "../data/parkingData";
 import {
   fetchRealParkingLots,
   isSupabaseConfigured,
+  randomizeRealParkingSlots,
   subscribeToParkingChanges,
   updateRealParkingSlot,
 } from "../services/supabaseParking";
@@ -58,6 +59,25 @@ function parkingReducer(state, action) {
         connectionStatus: "live",
         dataError: null,
         lastUpdatedAt: new Date().toISOString(),
+      };
+
+    case "SET_PARKED_CAR":
+      return {
+        ...state,
+        parkedCarId: action.payload,
+        selectedLotId: action.payload,
+        selectedFloor:
+          state.parkingLots.find((lot) => lot.id === action.payload)?.floor ??
+          state.selectedFloor,
+        viewMode: "map",
+      };
+
+    case "CLEAR_PARKED_CAR":
+      return {
+        ...state,
+        parkedCarId: null,
+        selectedLotId: null,
+        viewMode: "map",
       };
 
     case "PARK_CAR":
@@ -203,6 +223,10 @@ export function ParkingProvider({ children }) {
   );
 
   const parkCar = useCallback(async (lot) => {
+    if (state.parkedCarId) {
+      return;
+    }
+
     if (state.dataMode === "real") {
       dispatch({
         type: "SET_CONNECTION_STATUS",
@@ -210,8 +234,10 @@ export function ParkingProvider({ children }) {
       });
 
       try {
+        const lotId = lot.id ?? lot;
         await updateRealParkingSlot(lot, true);
         await refreshRealData();
+        dispatch({ type: "SET_PARKED_CAR", payload: lotId });
       } catch (error) {
         dispatch({
           type: "SET_CONNECTION_STATUS",
@@ -226,11 +252,66 @@ export function ParkingProvider({ children }) {
     }
 
     dispatch({ type: "PARK_CAR", payload: lot.id ?? lot });
+  }, [refreshRealData, state.dataMode, state.parkedCarId]);
+
+  const resetRealParking = useCallback(async () => {
+    if (state.dataMode !== "real") {
+      return;
+    }
+
+    dispatch({
+      type: "SET_CONNECTION_STATUS",
+      payload: { status: "connecting" },
+    });
+
+    try {
+      await randomizeRealParkingSlots();
+      await refreshRealData();
+      dispatch({ type: "CLEAR_PARKED_CAR" });
+    } catch (error) {
+      dispatch({
+        type: "SET_CONNECTION_STATUS",
+        payload: {
+          status: "offline",
+          error: error.message ?? "Gagal reset data Supabase.",
+        },
+      });
+    }
   }, [refreshRealData, state.dataMode]);
 
-  const leaveParking = useCallback(() => {
+  const leaveParking = useCallback(async () => {
+    if (state.dataMode === "real") {
+      const lot = state.parkingLots.find((item) => item.id === state.parkedCarId);
+
+      if (!lot) {
+        dispatch({ type: "CLEAR_PARKED_CAR" });
+        return;
+      }
+
+      dispatch({
+        type: "SET_CONNECTION_STATUS",
+        payload: { status: "connecting" },
+      });
+
+      try {
+        await updateRealParkingSlot(lot, false);
+        await refreshRealData();
+        dispatch({ type: "CLEAR_PARKED_CAR" });
+      } catch (error) {
+        dispatch({
+          type: "SET_CONNECTION_STATUS",
+          payload: {
+            status: "offline",
+            error: error.message ?? "Gagal keluar parkir di Supabase.",
+          },
+        });
+      }
+
+      return;
+    }
+
     dispatch({ type: "LEAVE_PARKING" });
-  }, []);
+  }, [refreshRealData, state.dataMode, state.parkedCarId, state.parkingLots]);
 
   const setViewMode = useCallback((mode) => {
     dispatch({ type: "SET_VIEW_MODE", payload: mode });
@@ -259,6 +340,7 @@ export function ParkingProvider({ children }) {
       parkCar,
       leaveParking,
       refreshRealData,
+      resetRealParking,
       setViewMode,
       setFloor,
       selectLot,
@@ -273,6 +355,7 @@ export function ParkingProvider({ children }) {
       parkCar,
       leaveParking,
       refreshRealData,
+      resetRealParking,
       setViewMode,
       setFloor,
       selectLot,
