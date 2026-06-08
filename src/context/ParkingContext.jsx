@@ -158,6 +158,16 @@ export function ParkingProvider({ children }) {
     [state.parkedCarId, state.parkingLots],
   );
 
+  const floorRecommendations = useMemo(
+    () =>
+      state.parkedCarId
+        ? []
+        : getRecommendations(
+            state.parkingLots.filter((lot) => lot.floor === state.selectedFloor),
+          ),
+    [state.parkedCarId, state.parkingLots, state.selectedFloor],
+  );
+
   const stats = useMemo(() => {
     const total = state.parkingLots.length;
     const occupied = state.parkingLots.filter((lot) => lot.isOccupied).length;
@@ -251,6 +261,7 @@ export function ParkingProvider({ children }) {
       ...state,
       canManuallyPark: false,
       recommendations,
+      floorRecommendations,
       stats,
       selectedLot,
       parkedLot,
@@ -264,6 +275,7 @@ export function ParkingProvider({ children }) {
     [
       state,
       recommendations,
+      floorRecommendations,
       stats,
       selectedLot,
       parkedLot,

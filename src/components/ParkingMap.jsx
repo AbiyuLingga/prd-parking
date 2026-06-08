@@ -30,9 +30,9 @@ function MetricCard({ label, value, accent = "text-white" }) {
 export function ParkingMap({ onRequestPark }) {
   const {
     canManuallyPark,
+    floorRecommendations,
     parkedCarId,
     parkingLots,
-    recommendations,
     selectedFloor,
     selectedLotId,
     selectLot,
@@ -47,8 +47,8 @@ export function ParkingMap({ onRequestPark }) {
 
   const recommendationMap = useMemo(
     () =>
-      new Map(recommendations.map((lot, index) => [lot.id, { rank: index + 1 }])),
-    [recommendations],
+      new Map(floorRecommendations.map((lot, index) => [lot.id, { rank: index + 1 }])),
+    [floorRecommendations],
   );
 
   const selectedFloorStats = useMemo(() => {
@@ -61,7 +61,7 @@ export function ParkingMap({ onRequestPark }) {
     };
   }, [floorLots]);
 
-  const nearestLot = recommendations[0] ?? floorLots.find((lot) => !lot.isOccupied);
+  const nearestLot = floorRecommendations[0] ?? floorLots.find((lot) => !lot.isOccupied);
 
   const handleSlotClick = useCallback((lot) => {
     selectLot(lot.id);

@@ -108,6 +108,7 @@ export function MobileParkingView({ onRequestPark }) {
   const {
     connectionStatus,
     dataError,
+    floorRecommendations,
     leaveParking,
     parkedCarId,
     parkedLot,
@@ -127,12 +128,12 @@ export function MobileParkingView({ onRequestPark }) {
   );
 
   const recommendationMap = useMemo(
-    () => new Map(recommendations.map((lot, index) => [lot.id, index + 1])),
-    [recommendations],
+    () => new Map(floorRecommendations.map((lot, index) => [lot.id, index + 1])),
+    [floorRecommendations],
   );
 
   const floorAvailable = floorLots.filter((lot) => !lot.isOccupied).length;
-  const nearestLot = recommendations[0] ?? floorLots.find((lot) => !lot.isOccupied);
+  const nearestLot = floorRecommendations[0] ?? floorLots.find((lot) => !lot.isOccupied);
 
   const handleSlotSelect = useCallback(
     (lot) => {
