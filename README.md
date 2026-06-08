@@ -1,8 +1,7 @@
 # Smart Parking Dashboard
 
-Dashboard web untuk sistem parkir pintar dengan dua mode data:
+Dashboard web untuk sistem parkir pintar dengan data real dari Supabase:
 
-- **Simulasi**: memakai data lokal/random untuk demo tanpa hardware.
 - **Real**: membaca status slot langsung dari Supabase, yang sudah diisi oleh alur hardware dan worker.
 
 Alur data mode real:
@@ -24,12 +23,11 @@ Web ini tidak menerima data langsung dari ESP32. ESP32 dan worker cukup mengirim
 
 - Dashboard parkir 2 lantai.
 - Tampilan slot kosong, terisi, dan rekomendasi.
-- Mode `Simulasi` untuk demo lokal.
 - Mode `Real` untuk status live dari Supabase.
 - Supabase Realtime subscription untuk update slot.
 - Layout desktop dan mobile.
 - Rekomendasi slot berdasarkan jarak lobby, lantai, dan kepadatan prediksi.
-- Rute pencarian mobil untuk mode simulasi setelah user memilih slot.
+- Rute pencarian mobil setelah user memilih slot.
 
 ## Tech Stack
 
@@ -56,8 +54,6 @@ Web ini tidak menerima data langsung dari ESP32. ESP32 dan worker cukup mengirim
 │   │   └── Sidebar.jsx
 │   ├── context/
 │   │   └── ParkingContext.jsx
-│   ├── data/
-│   │   └── parkingData.js
 │   ├── services/
 │   │   └── supabaseParking.js
 │   ├── utils/
@@ -275,7 +271,7 @@ kiri  -> A
 kanan -> B
 ```
 
-Di mode real, slot layout yang tidak punya pasangan row Supabase memakai fallback tampilan 50% terisi dan 50% kosong. Slot fallback yang kosong bisa dilihat detailnya, tetapi tidak bisa diupdate sampai row sebenarnya dibuat di Supabase.
+Di mode real, dashboard hanya menampilkan slot yang ada sebagai row Supabase. Slot yang tidak ada di Supabase tidak dibuat sebagai fallback di frontend.
 
 Contoh:
 
@@ -293,24 +289,13 @@ Nilai status yang dianggap terisi:
 true, 1, "true", "occupied", "terisi", "full"
 ```
 
-## Mode Simulasi vs Mode Real
-
-### Mode Simulasi
-
-- Data slot dibuat lokal dari `src/data/parkingData.js`.
-- Status terisi dibuat random saat app dibuka atau mode simulasi di-reset.
-- User bisa klik slot kosong untuk simulasi parkir.
-- Tombol cari rute dan keluar parkir bekerja lokal.
-
-### Mode Real
+## Mode Real
 
 - Data dibaca dari Supabase.
 - Slot yang ada row Supabase memakai status `is_filled` asli.
-- Slot yang belum ada row Supabase memakai fallback tampilan 50% terisi dan 50% kosong.
+- Slot yang belum ada row Supabase tidak ditampilkan.
 - Klik slot kosong membuka modal detail.
 - Tombol `Tandai Terisi` mengubah `is_filled` menjadi `true` di Supabase.
-- Slot fallback belum bisa diupdate karena row-nya belum ada di Supabase.
-- Tombol reset random di panel Mode Data mengacak semua row Supabase menjadi sekitar 50% terisi dan 50% kosong.
 - Setelah update, dashboard mengambil ulang data Supabase.
 - Tombol refresh tersedia untuk mengambil ulang data Supabase.
 

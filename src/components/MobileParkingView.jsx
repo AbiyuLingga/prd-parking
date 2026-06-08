@@ -6,7 +6,6 @@ import {
   Database,
   Home,
   Navigation,
-  Shuffle,
   TimerReset,
 } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -114,7 +113,6 @@ export function MobileParkingView({ onRequestPark }) {
     parkedLot,
     parkingLots,
     recommendations,
-    resetRealParking,
     selectedFloor,
     selectedLotId,
     selectLot,
@@ -214,14 +212,6 @@ export function MobileParkingView({ onRequestPark }) {
               <Database size={14} />
               Data Real
             </div>
-            <button
-              aria-label="Reset random parkiran"
-              className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white/70"
-              onClick={resetRealParking}
-              type="button"
-            >
-              <Shuffle size={14} />
-            </button>
           </div>
           <div className="mt-2 flex justify-between gap-3 text-xs">
             <span className="text-white/45">Status</span>

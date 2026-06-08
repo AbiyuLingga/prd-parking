@@ -6,11 +6,9 @@ import {
   useMemo,
   useReducer,
 } from "react";
-import { generateParkingLots } from "../data/parkingData";
 import {
   fetchRealParkingLots,
   isSupabaseConfigured,
-  randomizeRealParkingSlots,
   subscribeToParkingChanges,
   updateRealParkingSlot,
 } from "../services/supabaseParking";
@@ -24,7 +22,7 @@ const initialState = {
   connectionStatus: "connecting",
   dataError: null,
   lastUpdatedAt: null,
-  parkingLots: generateParkingLots(),
+  parkingLots: [],
   parkedCarId: null,
   viewMode: "map",
   selectedFloor: 1,
@@ -163,7 +161,7 @@ export function ParkingProvider({ children }) {
   const stats = useMemo(() => {
     const total = state.parkingLots.length;
     const occupied = state.parkingLots.filter((lot) => lot.isOccupied).length;
-    const available = total - occupied;
+    const available = state.parkingLots.filter((lot) => !lot.isOccupied).length;
 
     return {
       total,
@@ -207,27 +205,6 @@ export function ParkingProvider({ children }) {
       });
     }
   }, [refreshRealData, state.parkedCarId]);
-
-  const resetRealParking = useCallback(async () => {
-    dispatch({
-      type: "SET_CONNECTION_STATUS",
-      payload: { status: "connecting" },
-    });
-
-    try {
-      await randomizeRealParkingSlots();
-      await refreshRealData();
-      dispatch({ type: "CLEAR_PARKED_CAR" });
-    } catch (error) {
-      dispatch({
-        type: "SET_CONNECTION_STATUS",
-        payload: {
-          status: "offline",
-          error: error.message ?? "Gagal reset data Supabase.",
-        },
-      });
-    }
-  }, [refreshRealData]);
 
   const leaveParking = useCallback(async () => {
     const lot = state.parkingLots.find((item) => item.id === state.parkedCarId);
@@ -280,7 +257,6 @@ export function ParkingProvider({ children }) {
       parkCar,
       leaveParking,
       refreshRealData,
-      resetRealParking,
       setViewMode,
       setFloor,
       selectLot,
@@ -294,7 +270,6 @@ export function ParkingProvider({ children }) {
       parkCar,
       leaveParking,
       refreshRealData,
-      resetRealParking,
       setViewMode,
       setFloor,
       selectLot,

@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Database,
   Navigation,
-  Shuffle,
   TimerReset,
 } from "lucide-react";
 import { useParking } from "../context/ParkingContext";
@@ -39,7 +38,6 @@ function DataModeControl({
   connectionStatus,
   dataError,
   lastUpdatedAt,
-  onReset,
 }) {
   const statusLabel = {
     connecting: "Menghubungkan",
@@ -54,15 +52,6 @@ function DataModeControl({
           <Database size={16} />
           Data Real
         </div>
-        <button
-          aria-label="Reset random parkiran"
-          className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/8 text-white/70 transition hover:bg-white/12"
-          onClick={onReset}
-          title="Reset random parkiran"
-          type="button"
-        >
-          <Shuffle size={14} />
-        </button>
       </div>
 
       <div className="mt-3 flex items-start justify-between gap-3 text-xs">
@@ -140,7 +129,6 @@ export function Sidebar() {
     lastUpdatedAt,
     parkedLot,
     recommendations,
-    resetRealParking,
     selectedFloor,
     selectLot,
     setFloor,
@@ -181,7 +169,6 @@ export function Sidebar() {
         connectionStatus={connectionStatus}
         dataError={dataError}
         lastUpdatedAt={lastUpdatedAt}
-        onReset={resetRealParking}
       />
 
       <SegmentedControl

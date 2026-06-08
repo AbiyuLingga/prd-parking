@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import { generateParkingLots } from "../data/parkingData";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -90,6 +89,22 @@ function buildLayoutId({ id, floor, row, column }) {
   return `L${floor}-${row}${column}`;
 }
 
+function densityFor(floor, rowLabel, column) {
+  const rowIndex = rowLabel === "B" ? 1 : 0;
+  const columnIndex = Number.isFinite(column) ? column - 1 : 0;
+
+  return ((floor * 3 + rowIndex * 4 + columnIndex * 2) % 10) + 1;
+}
+
+function distanceFromRightLobby(floor, rowLabel, column) {
+  const columnIndex = Number.isFinite(column) ? column - 1 : 0;
+  const sameSideDistance = 5 + columnIndex * 7;
+  const crossingPenalty = rowLabel === "A" ? 22 : 0;
+  const floorPenalty = floor === 2 ? 14 : 0;
+
+  return sameSideDistance + crossingPenalty + floorPenalty;
+}
+
 function normalizeSlotRow(row) {
   const rawId = readFirst(row, [
     "slot_id",
@@ -144,12 +159,6 @@ export function isSupabaseConfigured() {
 }
 
 export function mergeRealRowsWithBaseLayout(rows) {
-  const baseLots = generateParkingLots().map((lot, index) => ({
-    ...lot,
-    isOccupied: index % 2 === 0,
-    isFallbackData: true,
-  }));
-  const baseById = new Map(baseLots.map((lot) => [lot.id, lot]));
   const normalizedSlots = rows.map(normalizeSlotRow);
   const usesZeroBasedLevels = normalizedSlots.some(
     (slot) => Number(slot.source?.levelId) === 0,
@@ -161,44 +170,57 @@ export function mergeRealRowsWithBaseLayout(rows) {
       !(slot.rawId && /^L\d+-[A-Z]\d+$/.test(String(slot.rawId))),
   );
 
-  normalizedSlots.forEach((slot) => {
-    const sourceLevel = Number(slot.source?.levelId);
-    const floor = Number.isFinite(sourceLevel)
-      ? usesZeroBasedLevels
-        ? sourceLevel + 1
-        : sourceLevel
-      : slot.floor;
-    const column =
-      usesZeroBasedSlotNumbers &&
-      Number.isFinite(slot.column) &&
-      !(slot.rawId && /^L\d+-[A-Z]\d+$/.test(String(slot.rawId)))
-        ? slot.column + 1
-        : slot.column;
-    const id = buildLayoutId({
-      id: slot.rawId,
-      floor,
-      row: slot.row,
-      column,
+  return normalizedSlots
+    .map((slot) => {
+      const sourceLevel = Number(slot.source?.levelId);
+      const floor = Number.isFinite(sourceLevel)
+        ? usesZeroBasedLevels
+          ? sourceLevel + 1
+          : sourceLevel
+        : slot.floor;
+      const column =
+        usesZeroBasedSlotNumbers &&
+        Number.isFinite(slot.column) &&
+        !(slot.rawId && /^L\d+-[A-Z]\d+$/.test(String(slot.rawId)))
+          ? slot.column + 1
+          : slot.column;
+      const id = buildLayoutId({
+        id: slot.rawId,
+        floor,
+        row: slot.row,
+        column,
+      });
+
+      if (!id || !Number.isFinite(floor) || !slot.row || !Number.isFinite(column)) {
+        return null;
+      }
+
+      return {
+        id,
+        floor,
+        row: slot.row,
+        column,
+        rowIndex: slot.row === "B" ? 1 : 0,
+        columnIndex: column - 1,
+        jarakLobby: distanceFromRightLobby(floor, slot.row, column),
+        kepadatanPrediksi: densityFor(floor, slot.row, column),
+        isOccupied: slot.isOccupied,
+        supabaseRef: slot.source,
+        updatedAt: slot.updatedAt,
+      };
+    })
+    .filter(Boolean)
+    .sort((first, second) => {
+      if (first.floor !== second.floor) {
+        return first.floor - second.floor;
+      }
+
+      if (first.row !== second.row) {
+        return first.row.localeCompare(second.row);
+      }
+
+      return first.column - second.column;
     });
-
-    if (!id || !baseById.has(id)) {
-      return;
-    }
-
-    const baseLot = baseById.get(id);
-    baseById.set(id, {
-      ...baseLot,
-      floor: Number.isFinite(floor) ? floor : baseLot.floor,
-      row: slot.row ?? baseLot.row,
-      column: Number.isFinite(column) ? column : baseLot.column,
-      isOccupied: slot.isOccupied,
-      isFallbackData: false,
-      supabaseRef: slot.source,
-      updatedAt: slot.updatedAt,
-    });
-  });
-
-  return Array.from(baseById.values());
 }
 
 export async function fetchRealParkingLots() {
@@ -348,48 +370,6 @@ export async function updateRealParkingSlot(lot, isFilled) {
       candidateFilters,
     )}`,
   );
-}
-
-export async function randomizeRealParkingSlots() {
-  const client = getSupabaseClient();
-
-  if (!client) {
-    throw new Error("Supabase env belum diisi");
-  }
-
-  const { data, error } = await client.from(parkingTable).select("parking_id");
-
-  if (error) {
-    throw error;
-  }
-
-  const rows = data ?? [];
-
-  if (rows.length === 0) {
-    throw new Error("Tabel Supabase belum punya data slot untuk di-random.");
-  }
-
-  const shuffledRows = [...rows].sort(() => Math.random() - 0.5);
-  const filledCount = Math.floor(shuffledRows.length / 2);
-  const filledIds = new Set(
-    shuffledRows.slice(0, filledCount).map((row) => row.parking_id),
-  );
-
-  const updates = rows.map((row) =>
-    client
-      .from(parkingTable)
-      .update({ is_filled: filledIds.has(row.parking_id) })
-      .eq("parking_id", row.parking_id),
-  );
-
-  const results = await Promise.all(updates);
-  const failedResult = results.find((result) => result.error);
-
-  if (failedResult) {
-    throw failedResult.error;
-  }
-
-  return rows.length;
 }
 
 export function subscribeToParkingChanges(onChange, onError) {

@@ -54,9 +54,10 @@ export function ParkingMap({ onRequestPark }) {
 
   const selectedFloorStats = useMemo(() => {
     const available = floorLots.filter((lot) => !lot.isOccupied).length;
+    const occupied = floorLots.filter((lot) => lot.isOccupied).length;
     return {
       available,
-      occupied: floorLots.length - available,
+      occupied,
       total: floorLots.length,
     };
   }, [floorLots]);
