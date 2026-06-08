@@ -3,6 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const parkingTable = import.meta.env.VITE_SUPABASE_TABLE ?? "parking_slots";
+const floorSlotLimits = {
+  1: 2,
+  2: 3,
+};
 
 let supabaseClient = null;
 
@@ -96,13 +100,12 @@ function densityFor(floor, rowLabel, column) {
   return ((floor * 3 + rowIndex * 4 + columnIndex * 2) % 10) + 1;
 }
 
-function distanceFromRightLobby(floor, rowLabel, column) {
-  const columnIndex = Number.isFinite(column) ? column - 1 : 0;
-  const sameSideDistance = 5 + columnIndex * 7;
-  const crossingPenalty = rowLabel === "A" ? 22 : 0;
+function distanceFromRightLobby(floor, visualIndex, slotsOnFloor) {
+  const slotsToRightLobby = Math.max(slotsOnFloor - visualIndex - 1, 0);
+  const sameSideDistance = 5 + slotsToRightLobby * 7;
   const floorPenalty = floor === 2 ? 14 : 0;
 
-  return sameSideDistance + crossingPenalty + floorPenalty;
+  return sameSideDistance + floorPenalty;
 }
 
 function normalizeSlotRow(row) {
@@ -170,7 +173,7 @@ export function mergeRealRowsWithBaseLayout(rows) {
       !(slot.rawId && /^L\d+-[A-Z]\d+$/.test(String(slot.rawId))),
   );
 
-  return normalizedSlots
+  const sortedLots = normalizedSlots
     .map((slot) => {
       const sourceLevel = Number(slot.source?.levelId);
       const floor = Number.isFinite(sourceLevel)
@@ -202,7 +205,7 @@ export function mergeRealRowsWithBaseLayout(rows) {
         column,
         rowIndex: slot.row === "B" ? 1 : 0,
         columnIndex: column - 1,
-        jarakLobby: distanceFromRightLobby(floor, slot.row, column),
+        jarakLobby: 0,
         kepadatanPrediksi: densityFor(floor, slot.row, column),
         isOccupied: slot.isOccupied,
         supabaseRef: slot.source,
@@ -221,6 +224,42 @@ export function mergeRealRowsWithBaseLayout(rows) {
 
       return first.column - second.column;
     });
+
+  const shownByFloor = new Map();
+  const visibleLots = sortedLots.filter((lot) => {
+    const limit = floorSlotLimits[lot.floor];
+
+    if (!limit) {
+      return true;
+    }
+
+    const shownCount = shownByFloor.get(lot.floor) ?? 0;
+
+    if (shownCount >= limit) {
+      return false;
+    }
+
+    shownByFloor.set(lot.floor, shownCount + 1);
+    return true;
+  });
+
+  const visibleCountByFloor = visibleLots.reduce((counts, lot) => {
+    counts.set(lot.floor, (counts.get(lot.floor) ?? 0) + 1);
+    return counts;
+  }, new Map());
+  const visualIndexByFloor = new Map();
+
+  return visibleLots.map((lot) => {
+    const visualIndex = visualIndexByFloor.get(lot.floor) ?? 0;
+    const slotsOnFloor = visibleCountByFloor.get(lot.floor) ?? 1;
+
+    visualIndexByFloor.set(lot.floor, visualIndex + 1);
+
+    return {
+      ...lot,
+      jarakLobby: distanceFromRightLobby(lot.floor, visualIndex, slotsOnFloor),
+    };
+  });
 }
 
 export async function fetchRealParkingLots() {

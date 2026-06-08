@@ -293,6 +293,7 @@ true, 1, "true", "occupied", "terisi", "full"
 
 - Data dibaca dari Supabase.
 - Slot yang ada row Supabase memakai status `is_filled` asli.
+- Tampilan parkir dibatasi menjadi 2 slot berjejer di Lantai 1 dan 3 slot berjejer di Lantai 2.
 - Slot yang belum ada row Supabase tidak ditampilkan.
 - Klik slot kosong membuka modal detail.
 - Tombol `Tandai Terisi` mengubah `is_filled` menjadi `true` di Supabase.

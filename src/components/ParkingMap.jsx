@@ -1,6 +1,5 @@
 import {
   Layers3,
-  MoveVertical,
   Route,
 } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -63,16 +62,6 @@ export function ParkingMap({ onRequestPark }) {
   }, [floorLots]);
 
   const nearestLot = recommendations[0] ?? floorLots.find((lot) => !lot.isOccupied);
-
-  const leftLots = useMemo(
-    () => floorLots.filter((lot) => lot.row === "A"),
-    [floorLots],
-  );
-
-  const rightLots = useMemo(
-    () => floorLots.filter((lot) => lot.row === "B"),
-    [floorLots],
-  );
 
   const handleSlotClick = useCallback((lot) => {
     selectLot(lot.id);
@@ -160,76 +149,37 @@ export function ParkingMap({ onRequestPark }) {
           </div>
         </div>
 
-        <div className="parking-stage relative min-h-[560px] overflow-hidden rounded-[16px] border border-white/10 bg-[#252720]/48 p-4">
-          <div className="relative mx-auto h-[530px] w-full max-w-[860px]">
+        <div className="parking-stage relative min-h-[300px] overflow-hidden rounded-[16px] border border-white/10 bg-[#252720]/48 p-4">
+          <div className="relative mx-auto min-h-[270px] w-full max-w-[760px]">
             {viewMode === "pedestrian_route" && parkedCarId && (
               <PedestrianRoute floor={selectedFloor} parkedLotId={parkedCarId} />
             )}
 
-            <div className="absolute inset-x-0 top-0 mx-auto w-full origin-top scale-[0.58] rounded-[16px] p-4 pb-8 sm:scale-[0.78] xl:scale-100">
-              <div className="grid grid-cols-[minmax(0,1fr)_82px_minmax(0,1fr)_72px] gap-3 sm:grid-cols-[minmax(0,1fr)_118px_minmax(0,1fr)_96px] sm:gap-5">
-                <div className="space-y-3">
-                  <div className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-center text-xs font-semibold uppercase text-white/70">
-                    Sisi Kiri
-                  </div>
-                  <div className="grid grid-rows-6 gap-2">
-                    {leftLots.map((lot) => (
-                      <ParkingSlot
-                        key={lot.id}
-                        isRecommended={recommendationMap.has(lot.id)}
-                        isSelected={selectedLotId === lot.id}
-                        lot={lot}
-                        onSelect={handleSlotClick}
-                        rank={recommendationMap.get(lot.id)?.rank}
-                      />
-                    ))}
-                  </div>
+            <div className="relative rounded-[16px] p-4 pb-8">
+              <div className="mb-4 grid grid-cols-[minmax(0,1fr)_96px] gap-4">
+                <div className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-center text-xs font-semibold uppercase text-white/70">
+                  Slot Parkir Lantai {selectedFloor}
                 </div>
+                <div className="rounded-md border border-orange-200/35 bg-orange-300/12 px-3 py-2 text-center text-xs font-semibold uppercase text-orange-100">
+                  Lobby
+                </div>
+              </div>
 
-                <div className="relative overflow-hidden rounded-lg border border-dashed border-white/18 bg-black/22">
-                  <div className="absolute inset-x-1/2 top-0 h-full w-px -translate-x-1/2 bg-orange-100/35" />
-                  <div className="absolute inset-x-0 top-0 flex justify-center">
-                    <div className="mt-3 flex items-center gap-1 rounded-md border border-orange-200/25 bg-orange-300/12 px-2 py-1 text-[11px] font-semibold text-orange-100">
-                      <MoveVertical size={13} />
-                      Jalan
-                    </div>
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="rounded-md border border-orange-100/25 bg-[#252720]/80 px-3 py-2 text-center font-data text-sm font-semibold text-orange-100 shadow-sm">
-                      L{selectedFloor}
-                    </div>
-                  </div>
-                  <div className="absolute inset-x-4 top-16 bottom-8 rounded-full border-x border-orange-200/20" />
-                </div>
-
-                <div className="space-y-3">
-                  <div className="rounded-md border border-white/10 bg-black/24 px-3 py-2 text-center text-xs font-semibold uppercase text-white/70">
-                    Sisi Kanan
-                  </div>
-                  <div className="grid grid-rows-6 gap-2">
-                    {rightLots.map((lot) => (
-                      <ParkingSlot
-                        key={lot.id}
-                        isRecommended={recommendationMap.has(lot.id)}
-                        isSelected={selectedLotId === lot.id}
-                        lot={lot}
-                        onSelect={handleSlotClick}
-                        rank={recommendationMap.get(lot.id)?.rank}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <div className="rounded-md border border-white/10 bg-black/24 px-2 py-2 text-center text-xs font-semibold uppercase text-white/70">
-                    Area
-                  </div>
-                  <div className="relative flex min-h-[68px] items-center justify-center overflow-hidden rounded-md border-2 border-orange-200/55 bg-orange-300/12 px-2 py-2 text-center text-orange-100">
-                    <span className="relative text-xs font-semibold uppercase">
-                      Lobby
-                    </span>
-                  </div>
-                </div>
+              <div
+                className={`grid gap-3 ${
+                  selectedFloor === 1 ? "grid-cols-2" : "grid-cols-3"
+                }`}
+              >
+                {floorLots.map((lot) => (
+                  <ParkingSlot
+                    key={lot.id}
+                    isRecommended={recommendationMap.has(lot.id)}
+                    isSelected={selectedLotId === lot.id}
+                    lot={lot}
+                    onSelect={handleSlotClick}
+                    rank={recommendationMap.get(lot.id)?.rank}
+                  />
+                ))}
               </div>
             </div>
           </div>

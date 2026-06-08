@@ -126,16 +126,6 @@ export function MobileParkingView({ onRequestPark }) {
     [parkingLots, selectedFloor],
   );
 
-  const leftLots = useMemo(
-    () => floorLots.filter((lot) => lot.row === "A"),
-    [floorLots],
-  );
-
-  const rightLots = useMemo(
-    () => floorLots.filter((lot) => lot.row === "B"),
-    [floorLots],
-  );
-
   const recommendationMap = useMemo(
     () => new Map(recommendations.map((lot, index) => [lot.id, index + 1])),
     [recommendations],
@@ -324,44 +314,21 @@ export function MobileParkingView({ onRequestPark }) {
           </div>
 
           <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-[#2a2723]/60 p-4 shadow-2xl shadow-black/25">
-            <div className="relative flex">
-              <div className="flex flex-1 flex-col gap-2.5">
-                <div className="mb-2 rounded-lg border border-white/5 bg-black/20 py-1.5 text-center text-[10px] font-semibold tracking-widest text-white/40">
-                  SISI KIRI
+            <div className="relative">
+              <div className="mb-3 grid grid-cols-[minmax(0,1fr)_74px] gap-2">
+                <div className="rounded-lg border border-white/5 bg-black/20 py-1.5 text-center text-[10px] font-semibold tracking-widest text-white/40">
+                  SLOT LANTAI {selectedFloor}
                 </div>
-                {leftLots.map((lot) => (
-                  <MobileParkingSlot
-                    key={lot.id}
-                    isRecommended={recommendationMap.has(lot.id)}
-                    isSelected={selectedLotId === lot.id}
-                    lot={lot}
-                    onSelect={handleSlotSelect}
-                    rank={recommendationMap.get(lot.id)}
-                  />
-                ))}
-              </div>
-
-              <div className="relative mx-2 flex w-12 shrink-0 flex-col items-center justify-center border-x border-dashed border-white/10">
-                <div className="mb-8 grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-[#1f1a15] font-data text-[10px] font-bold text-white/70 shadow-lg">
-                  L{selectedFloor}
-                </div>
-                <div className="mb-8 flex flex-1 flex-col items-center justify-center gap-8 font-semibold text-white/10">
-                  <span className="mb-12 rotate-90 text-[10px] tracking-[0.4em]">
-                    JALAN
-                  </span>
-                  <span className="mt-12 rotate-90 text-[10px] tracking-[0.4em]">
-                    JALAN
-                  </span>
+                <div className="rounded-lg border border-[#ff6845]/20 bg-[#ff6845]/10 py-1.5 text-center text-[10px] font-semibold tracking-widest text-[#ff6845]">
+                  LOBBY
                 </div>
               </div>
-
-              <div className="flex flex-1 flex-col gap-2.5">
-                <div className="mb-2 rounded-lg border border-[#ff6845]/20 bg-[#ff6845]/10 py-1.5 text-center text-[10px] font-semibold tracking-widest text-[#ff6845]">
-                  SISI KANAN
-                  <br />
-                  <span className="text-[8px] opacity-70">LOBBY AREA</span>
-                </div>
-                {rightLots.map((lot) => (
+              <div
+                className={`grid gap-2.5 ${
+                  selectedFloor === 1 ? "grid-cols-2" : "grid-cols-3"
+                }`}
+              >
+                {floorLots.map((lot) => (
                   <MobileParkingSlot
                     key={lot.id}
                     isRecommended={recommendationMap.has(lot.id)}
