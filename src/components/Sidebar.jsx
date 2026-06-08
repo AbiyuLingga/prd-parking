@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Database,
   Navigation,
-  RefreshCw,
   Shuffle,
   TimerReset,
 } from "lucide-react";
@@ -39,14 +38,10 @@ function SegmentedControl({ label, value, options, onChange }) {
 function DataModeControl({
   connectionStatus,
   dataError,
-  dataMode,
   lastUpdatedAt,
-  onRefresh,
   onReset,
-  onSelectMode,
 }) {
   const statusLabel = {
-    simulation: "Simulasi lokal",
     connecting: "Menghubungkan",
     live: "Supabase live",
     offline: "Offline",
@@ -57,50 +52,17 @@ function DataModeControl({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <Database size={16} />
-          Mode Data
+          Data Real
         </div>
-        {dataMode === "real" && (
-          <div className="flex items-center gap-2">
-            <button
-              aria-label="Reset random parkiran"
-              className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/8 text-white/70 transition hover:bg-white/12"
-              onClick={onReset}
-              title="Reset random parkiran"
-              type="button"
-            >
-              <Shuffle size={14} />
-            </button>
-            <button
-              aria-label="Refresh Supabase"
-              className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/8 text-white/70 transition hover:bg-white/12"
-              onClick={onRefresh}
-              title="Refresh Supabase"
-              type="button"
-            >
-              <RefreshCw size={14} />
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 rounded-lg border border-white/10 bg-slate-950/50 p-1">
-        {[
-          { label: "Simulasi", value: "simulation" },
-          { label: "Real", value: "real" },
-        ].map((option) => (
-          <button
-            className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
-              dataMode === option.value
-                ? "bg-[#ff6845] text-white"
-                : "text-slate-300 hover:bg-white/8 hover:text-white"
-            }`}
-            key={option.value}
-            onClick={() => onSelectMode(option.value)}
-            type="button"
-          >
-            {option.label}
-          </button>
-        ))}
+        <button
+          aria-label="Reset random parkiran"
+          className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/8 text-white/70 transition hover:bg-white/12"
+          onClick={onReset}
+          title="Reset random parkiran"
+          type="button"
+        >
+          <Shuffle size={14} />
+        </button>
       </div>
 
       <div className="mt-3 flex items-start justify-between gap-3 text-xs">
@@ -113,9 +75,9 @@ function DataModeControl({
           {statusLabel}
         </span>
       </div>
-      {lastUpdatedAt && dataMode === "real" && (
+      {lastUpdatedAt && (
         <div className="mt-2 flex justify-between gap-3 text-xs">
-          <span className="text-white/55">Update</span>
+          <span className="text-white/55">Auto update</span>
           <span className="font-data text-white/75">
             {new Date(lastUpdatedAt).toLocaleTimeString("id-ID", {
               hour: "2-digit",
@@ -174,16 +136,13 @@ export function Sidebar() {
   const {
     connectionStatus,
     dataError,
-    dataMode,
     leaveParking,
     lastUpdatedAt,
     parkedLot,
     recommendations,
-    refreshRealData,
     resetRealParking,
     selectedFloor,
     selectLot,
-    setDataMode,
     setFloor,
     setViewMode,
     stats,
@@ -221,11 +180,8 @@ export function Sidebar() {
       <DataModeControl
         connectionStatus={connectionStatus}
         dataError={dataError}
-        dataMode={dataMode}
         lastUpdatedAt={lastUpdatedAt}
-        onRefresh={refreshRealData}
         onReset={resetRealParking}
-        onSelectMode={setDataMode}
       />
 
       <SegmentedControl

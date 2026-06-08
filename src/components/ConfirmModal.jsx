@@ -1,6 +1,6 @@
 import { Car, MapPinned, X } from "lucide-react";
 
-export function ConfirmModal({ lot, mode = "simulation", onCancel, onConfirm }) {
+export function ConfirmModal({ lot, mode = "real", onCancel, onConfirm }) {
   if (!lot) {
     return null;
   }

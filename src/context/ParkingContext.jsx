@@ -17,10 +17,11 @@ import {
 import { getRecommendations } from "../utils/algorithm";
 
 const ParkingContext = createContext(null);
+const AUTO_REFRESH_INTERVAL_MS = 5000;
 
 const initialState = {
-  dataMode: "simulation",
-  connectionStatus: "simulation",
+  dataMode: "real",
+  connectionStatus: "connecting",
   dataError: null,
   lastUpdatedAt: null,
   parkingLots: generateParkingLots(),
@@ -32,19 +33,6 @@ const initialState = {
 
 function parkingReducer(state, action) {
   switch (action.type) {
-    case "SET_DATA_MODE":
-      return {
-        ...state,
-        dataMode: action.payload,
-        connectionStatus: action.payload === "real" ? "connecting" : "simulation",
-        dataError: null,
-        parkedCarId: null,
-        selectedLotId: null,
-        viewMode: "map",
-        parkingLots:
-          action.payload === "simulation" ? generateParkingLots() : state.parkingLots,
-      };
-
     case "SET_CONNECTION_STATUS":
       return {
         ...state,
@@ -80,36 +68,6 @@ function parkingReducer(state, action) {
         viewMode: "map",
       };
 
-    case "PARK_CAR":
-      if (state.dataMode === "real") {
-        return state;
-      }
-
-      return {
-        ...state,
-        parkedCarId: action.payload,
-        selectedLotId: action.payload,
-        viewMode: "map",
-        parkingLots: state.parkingLots.map((lot) =>
-          lot.id === action.payload ? { ...lot, isOccupied: true } : lot,
-        ),
-      };
-
-    case "LEAVE_PARKING":
-      if (state.dataMode === "real") {
-        return state;
-      }
-
-      return {
-        ...state,
-        viewMode: "map",
-        selectedLotId: null,
-        parkingLots: state.parkingLots.map((lot) =>
-          lot.id === state.parkedCarId ? { ...lot, isOccupied: false } : lot,
-        ),
-        parkedCarId: null,
-      };
-
     case "SET_VIEW_MODE":
       return {
         ...state,
@@ -139,7 +97,7 @@ function parkingReducer(state, action) {
 export function ParkingProvider({ children }) {
   const [state, dispatch] = useReducer(parkingReducer, initialState);
 
-  const refreshRealData = useCallback(async () => {
+  const refreshRealData = useCallback(async ({ silent = false } = {}) => {
     if (!isSupabaseConfigured()) {
       dispatch({
         type: "SET_CONNECTION_STATUS",
@@ -151,10 +109,12 @@ export function ParkingProvider({ children }) {
       return;
     }
 
-    dispatch({
-      type: "SET_CONNECTION_STATUS",
-      payload: { status: "connecting" },
-    });
+    if (!silent) {
+      dispatch({
+        type: "SET_CONNECTION_STATUS",
+        payload: { status: "connecting" },
+      });
+    }
 
     try {
       const lots = await fetchRealParkingLots();
@@ -171,14 +131,10 @@ export function ParkingProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (state.dataMode !== "real") {
-      return undefined;
-    }
-
     refreshRealData();
 
     const unsubscribe = subscribeToParkingChanges(
-      refreshRealData,
+      () => refreshRealData({ silent: true }),
       (error) => {
         dispatch({
           type: "SET_CONNECTION_STATUS",
@@ -189,11 +145,15 @@ export function ParkingProvider({ children }) {
         });
       },
     );
+    const refreshInterval = window.setInterval(() => {
+      refreshRealData({ silent: true });
+    }, AUTO_REFRESH_INTERVAL_MS);
 
     return () => {
+      window.clearInterval(refreshInterval);
       unsubscribe?.();
     };
-  }, [refreshRealData, state.dataMode]);
+  }, [refreshRealData]);
 
   const recommendations = useMemo(
     () => (state.parkedCarId ? [] : getRecommendations(state.parkingLots)),
@@ -227,38 +187,28 @@ export function ParkingProvider({ children }) {
       return;
     }
 
-    if (state.dataMode === "real") {
+    dispatch({
+      type: "SET_CONNECTION_STATUS",
+      payload: { status: "connecting" },
+    });
+
+    try {
+      const lotId = lot.id ?? lot;
+      await updateRealParkingSlot(lot, true);
+      await refreshRealData();
+      dispatch({ type: "SET_PARKED_CAR", payload: lotId });
+    } catch (error) {
       dispatch({
         type: "SET_CONNECTION_STATUS",
-        payload: { status: "connecting" },
+        payload: {
+          status: "offline",
+          error: error.message ?? "Gagal update Supabase.",
+        },
       });
-
-      try {
-        const lotId = lot.id ?? lot;
-        await updateRealParkingSlot(lot, true);
-        await refreshRealData();
-        dispatch({ type: "SET_PARKED_CAR", payload: lotId });
-      } catch (error) {
-        dispatch({
-          type: "SET_CONNECTION_STATUS",
-          payload: {
-            status: "offline",
-            error: error.message ?? "Gagal update Supabase.",
-          },
-        });
-      }
-
-      return;
     }
-
-    dispatch({ type: "PARK_CAR", payload: lot.id ?? lot });
-  }, [refreshRealData, state.dataMode, state.parkedCarId]);
+  }, [refreshRealData, state.parkedCarId]);
 
   const resetRealParking = useCallback(async () => {
-    if (state.dataMode !== "real") {
-      return;
-    }
-
     dispatch({
       type: "SET_CONNECTION_STATUS",
       payload: { status: "connecting" },
@@ -277,41 +227,35 @@ export function ParkingProvider({ children }) {
         },
       });
     }
-  }, [refreshRealData, state.dataMode]);
+  }, [refreshRealData]);
 
   const leaveParking = useCallback(async () => {
-    if (state.dataMode === "real") {
-      const lot = state.parkingLots.find((item) => item.id === state.parkedCarId);
+    const lot = state.parkingLots.find((item) => item.id === state.parkedCarId);
 
-      if (!lot) {
-        dispatch({ type: "CLEAR_PARKED_CAR" });
-        return;
-      }
-
-      dispatch({
-        type: "SET_CONNECTION_STATUS",
-        payload: { status: "connecting" },
-      });
-
-      try {
-        await updateRealParkingSlot(lot, false);
-        await refreshRealData();
-        dispatch({ type: "CLEAR_PARKED_CAR" });
-      } catch (error) {
-        dispatch({
-          type: "SET_CONNECTION_STATUS",
-          payload: {
-            status: "offline",
-            error: error.message ?? "Gagal keluar parkir di Supabase.",
-          },
-        });
-      }
-
+    if (!lot) {
+      dispatch({ type: "CLEAR_PARKED_CAR" });
       return;
     }
 
-    dispatch({ type: "LEAVE_PARKING" });
-  }, [refreshRealData, state.dataMode, state.parkedCarId, state.parkingLots]);
+    dispatch({
+      type: "SET_CONNECTION_STATUS",
+      payload: { status: "connecting" },
+    });
+
+    try {
+      await updateRealParkingSlot(lot, false);
+      await refreshRealData();
+      dispatch({ type: "CLEAR_PARKED_CAR" });
+    } catch (error) {
+      dispatch({
+        type: "SET_CONNECTION_STATUS",
+        payload: {
+          status: "offline",
+          error: error.message ?? "Gagal keluar parkir di Supabase.",
+        },
+      });
+    }
+  }, [refreshRealData, state.parkedCarId, state.parkingLots]);
 
   const setViewMode = useCallback((mode) => {
     dispatch({ type: "SET_VIEW_MODE", payload: mode });
@@ -325,14 +269,10 @@ export function ParkingProvider({ children }) {
     dispatch({ type: "SELECT_LOT", payload: lotId });
   }, []);
 
-  const setDataMode = useCallback((mode) => {
-    dispatch({ type: "SET_DATA_MODE", payload: mode });
-  }, []);
-
   const value = useMemo(
     () => ({
       ...state,
-      canManuallyPark: state.dataMode === "simulation",
+      canManuallyPark: false,
       recommendations,
       stats,
       selectedLot,
@@ -344,7 +284,6 @@ export function ParkingProvider({ children }) {
       setViewMode,
       setFloor,
       selectLot,
-      setDataMode,
     }),
     [
       state,
@@ -359,7 +298,6 @@ export function ParkingProvider({ children }) {
       setViewMode,
       setFloor,
       selectLot,
-      setDataMode,
     ],
   );
 

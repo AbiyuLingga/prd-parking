@@ -6,15 +6,19 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "remotion:preview": "remotion studio src/remotion/index.jsx",
+    "render:demo": "remotion render src/remotion/index.jsx ParkingSaasDemo renders/parking-saas-demo.mp4"
   },
   "dependencies": {
+    "@remotion/cli": "^4.0.459",
     "@supabase/supabase-js": "^2.105.4",
     "@tailwindcss/vite": "^4.1.0",
     "@vitejs/plugin-react": "^5.0.0",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "remotion": "^4.0.459",
     "tailwindcss": "^4.1.0",
     "vite": "^7.0.0"
   }
